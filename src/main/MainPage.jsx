@@ -106,6 +106,14 @@ const MainPage = () => {
   // be a blank panel. Derived rather than written back, so unstarring
   // everything and starring again returns you to the tab you chose.
   const effectiveMode = favourites.length ? listMode : 'all';
+  const showFavourites = effectiveMode === 'favourites';
+  // Favourites filters the map as well as the list. Filtering only the list is
+  // half a feature with hundreds of devices - you get a clean list and a wall
+  // of pins. The filterMap checkbox in the toolbar popover still stands on its
+  // own for the case where a complete map is actually wanted.
+  const filterMapOrFavourites = filterMap || showFavourites;
+  // On All, restrict the map to favourites while leaving the list whole.
+  const [mapFavouritesOnly, setMapFavouritesOnly] = usePersistedState('mapFavouritesOnly', false);
 
   const [devicesOpen, setDevicesOpen] = useState(desktop);
   const [eventsOpen, setEventsOpen] = useState(false);
@@ -122,9 +130,10 @@ const MainPage = () => {
     keyword,
     filter,
     filterSort,
-    filterMap,
+    filterMapOrFavourites,
     favourites,
-    effectiveMode === 'favourites',
+    showFavourites,
+    mapFavouritesOnly,
     positions,
     setFilteredDevices,
     setFilteredPositions,
@@ -179,6 +188,8 @@ const MainPage = () => {
               setMode={setListMode}
               totalCount={Object.keys(devices).length}
               favouriteCount={favourites.length}
+              mapFavouritesOnly={mapFavouritesOnly}
+              setMapFavouritesOnly={setMapFavouritesOnly}
             />
             <div className={classes.listWrapper}>
               <DeviceList devices={filteredDevices} />

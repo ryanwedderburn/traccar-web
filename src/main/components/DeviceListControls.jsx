@@ -1,5 +1,7 @@
-import { ToggleButton, ToggleButtonGroup } from '@mui/material';
+import { IconButton, ToggleButton, ToggleButtonGroup, Tooltip } from '@mui/material';
 import StarIcon from '@mui/icons-material/Star';
+import FilterAltIcon from '@mui/icons-material/FilterAlt';
+import FilterAltOffIcon from '@mui/icons-material/FilterAltOff';
 import { makeStyles } from 'tss-react/mui';
 import { useTranslation } from '../../common/components/LocalizationProvider';
 
@@ -8,15 +10,25 @@ import { useTranslation } from '../../common/components/LocalizationProvider';
  *
  * Favourites is disabled while nothing is starred, so the tab can never be an
  * empty panel with no explanation.
+ *
+ * The filter icon only appears on All, and restricts the *map* to favourites
+ * while leaving the list complete. That is the point: with several hundred
+ * entrants you want to scroll and search the whole field to star the ones you
+ * care about, without the map turning into a wall of pins. On Favourites the
+ * list is already the watch list, so the control would have nothing to do.
  */
 
 const useStyles = makeStyles()((theme) => ({
   root: {
+    display: 'flex',
+    alignItems: 'center',
+    gap: theme.spacing(1),
     padding: theme.spacing(1, 1.5, 0),
     flexShrink: 0,
   },
   group: {
-    width: '100%',
+    flex: 1,
+    minWidth: 0,
   },
   button: {
     flex: 1,
@@ -26,11 +38,26 @@ const useStyles = makeStyles()((theme) => ({
     textTransform: 'none',
     whiteSpace: 'nowrap',
   },
+  mapFilter: {
+    flexShrink: 0,
+  },
+  mapFilterOn: {
+    color: theme.palette.primary.main,
+  },
 }));
 
-const DeviceListControls = ({ mode, setMode, totalCount, favouriteCount }) => {
+const DeviceListControls = ({
+  mode,
+  setMode,
+  totalCount,
+  favouriteCount,
+  mapFavouritesOnly,
+  setMapFavouritesOnly,
+}) => {
   const { classes } = useStyles();
   const t = useTranslation();
+
+  const mapFilterLabel = t('sharedFilterMap') || 'Filter on Map';
 
   return (
     <div className={classes.root}>
@@ -53,6 +80,26 @@ const DeviceListControls = ({ mode, setMode, totalCount, favouriteCount }) => {
           {`${t('sharedFavourites') || 'Favourites'} (${favouriteCount})`}
         </ToggleButton>
       </ToggleButtonGroup>
+      {mode === 'all' && (
+        <Tooltip title={mapFilterLabel}>
+          <span>
+            <IconButton
+              className={classes.mapFilter}
+              size="small"
+              disabled={!favouriteCount}
+              aria-label={mapFilterLabel}
+              aria-pressed={mapFavouritesOnly}
+              onClick={() => setMapFavouritesOnly(!mapFavouritesOnly)}
+            >
+              {mapFavouritesOnly ? (
+                <FilterAltIcon fontSize="small" className={classes.mapFilterOn} />
+              ) : (
+                <FilterAltOffIcon fontSize="small" />
+              )}
+            </IconButton>
+          </span>
+        </Tooltip>
+      )}
     </div>
   );
 };

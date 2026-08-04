@@ -9,12 +9,14 @@ export default (
   filterMap,
   favourites,
   showFavourites,
+  mapFavouritesOnly,
   positions,
   setFilteredDevices,
   setFilteredPositions,
 ) => {
   const groups = useSelector((state) => state.groups.items);
   const devices = useSelector((state) => state.devices.items);
+  const selectedId = useSelector((state) => state.devices.selectedId);
 
   useEffect(() => {
     const deviceGroups = (device) => {
@@ -60,11 +62,21 @@ export default (
         break;
     }
     setFilteredDevices(filtered);
-    setFilteredPositions(
-      filterMap
-        ? filtered.map((device) => positions[device.id]).filter(Boolean)
-        : Object.values(positions),
-    );
+
+    if (mapFavouritesOnly && !showFavourites) {
+      // Browsing the whole field while the map stays on the watch list. The
+      // selected device is always included, so tapping an entrant you have not
+      // starred yet still shows you where it is.
+      const ids = new Set(favourites);
+      if (selectedId) {
+        ids.add(selectedId);
+      }
+      setFilteredPositions([...ids].map((id) => positions[id]).filter(Boolean));
+    } else if (filterMap) {
+      setFilteredPositions(filtered.map((device) => positions[device.id]).filter(Boolean));
+    } else {
+      setFilteredPositions(Object.values(positions));
+    }
   }, [
     keyword,
     filter,
@@ -72,6 +84,8 @@ export default (
     filterMap,
     favourites,
     showFavourites,
+    mapFavouritesOnly,
+    selectedId,
     groups,
     devices,
     positions,
