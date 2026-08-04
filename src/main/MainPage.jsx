@@ -1,4 +1,4 @@
-import { lazy, Suspense, useState, useCallback, useEffect } from 'react';
+import { lazy, Suspense, useState, useCallback, useEffect, useMemo } from 'react';
 import { Paper } from '@mui/material';
 import { makeStyles } from 'tss-react/mui';
 import { useTheme } from '@mui/material/styles';
@@ -13,8 +13,10 @@ import EventsDrawer from './EventsDrawer';
 import useFilter from './useFilter';
 import MainToolbar from './MainToolbar';
 import DeviceListControls from './components/DeviceListControls';
+import RouteFilter from './components/RouteFilter';
 import { useAttributePreference } from '../common/util/preferences';
 import useFavourites from '../common/util/useFavourites';
+import useRouteFilter from '../common/util/useRouteFilter';
 
 const MainMap = lazy(() => import('./MainMap'));
 
@@ -114,6 +116,24 @@ const MainPage = () => {
   const filterMapOrFavourites = filterMap || showFavourites;
   // On All, restrict the map to favourites while leaving the list whole.
   const [mapFavouritesOnly, setMapFavouritesOnly] = usePersistedState('mapFavouritesOnly', false);
+  // Which event's routes and points to show. Per browser, like every other
+  // filter here - so a spectator's last combination is their preset.
+  const [routeFilter, setRouteFilter] = usePersistedState('routeFilter', {
+    event: null,
+    classes: [],
+    day: null,
+  });
+  // A spectator granted one event should not be asked to choose it. Derived
+  // rather than written back, so granting a second event later just makes the
+  // selector appear.
+  const { events: availableEvents } = useRouteFilter(routeFilter);
+  const effectiveRouteFilter = useMemo(
+    () =>
+      availableEvents.length === 1 && !routeFilter.event
+        ? { ...routeFilter, event: availableEvents[0] }
+        : routeFilter,
+    [availableEvents, routeFilter],
+  );
 
   const [devicesOpen, setDevicesOpen] = useState(desktop);
   const [eventsOpen, setEventsOpen] = useState(false);
@@ -147,6 +167,7 @@ const MainPage = () => {
             filteredPositions={filteredPositions}
             selectedPosition={selectedPosition}
             onEventsClick={onEventsClick}
+            routeFilter={effectiveRouteFilter}
           />
         </Suspense>
       )}
@@ -165,6 +186,21 @@ const MainPage = () => {
             filterMap={filterMap}
             setFilterMap={setFilterMap}
           />
+          {/*
+            In the header rather than with the device list: this filters the
+            map, and on a phone the list collapses away entirely while the map
+            stays. Left in the list panel it was unreachable in exactly the
+            view it affects.
+
+            Hidden on a phone while the list is open, though. There the list and
+            map are separate screens, so route controls above a list of riders
+            are three rows of chrome for something you cannot see - and stacking
+            them under All/Favourites reads as one filter when they are two
+            unrelated ideas. Desktop shows both, because both are visible.
+          */}
+          {(desktop || !devicesOpen) && (
+            <RouteFilter filter={effectiveRouteFilter} setFilter={setRouteFilter} />
+          )}
         </Paper>
         <div className={classes.middle}>
           {!desktop && (
@@ -174,6 +210,7 @@ const MainPage = () => {
                   filteredPositions={filteredPositions}
                   selectedPosition={selectedPosition}
                   onEventsClick={onEventsClick}
+                  routeFilter={effectiveRouteFilter}
                 />
               </Suspense>
             </div>

@@ -3,9 +3,10 @@ import { useSelector } from 'react-redux';
 import { useTheme } from '@mui/material/styles';
 import { map } from './core/MapView';
 import { findFonts, geofenceToFeature } from './core/mapUtil';
+import { matchesRouteFilter } from '../common/util/useRouteFilter';
 import { useAttributePreference } from '../common/util/preferences';
 
-const MapGeofence = () => {
+const MapGeofence = ({ filter }) => {
   const id = useId();
 
   const theme = useTheme();
@@ -83,10 +84,11 @@ const MapGeofence = () => {
         type: 'FeatureCollection',
         features: Object.values(geofences)
           .filter((geofence) => !geofence.attributes.hide)
+          .filter((geofence) => matchesRouteFilter(geofence, filter))
           .map((geofence) => geofenceToFeature(theme, geofence)),
       });
     }
-  }, [mapGeofences, geofences, id, theme]);
+  }, [mapGeofences, geofences, id, theme, filter]);
 
   return null;
 };

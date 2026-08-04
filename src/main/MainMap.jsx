@@ -21,7 +21,7 @@ import MapRuler from '../map/control/MapRuler';
 import MapNotification from '../map/control/MapNotification';
 import useFeatures from '../common/util/useFeatures';
 
-const MainMap = ({ filteredPositions, selectedPosition, onEventsClick }) => {
+const MainMap = ({ filteredPositions, selectedPosition, onEventsClick, routeFilter }) => {
   const theme = useTheme();
   const dispatch = useDispatch();
 
@@ -44,7 +44,7 @@ const MainMap = ({ filteredPositions, selectedPosition, onEventsClick }) => {
     <>
       <MapView>
         <MapOverlay />
-        <MapGeofence />
+        <MapGeofence filter={routeFilter} />
         <MapAccuracy positions={filteredPositions} />
         <MapLiveRoutes deviceIds={filteredPositions.map((p) => p.deviceId)} />
         <MapPositions
