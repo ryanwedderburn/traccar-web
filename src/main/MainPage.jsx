@@ -12,7 +12,9 @@ import usePersistedState from '../common/util/usePersistedState';
 import EventsDrawer from './EventsDrawer';
 import useFilter from './useFilter';
 import MainToolbar from './MainToolbar';
+import DeviceListControls from './components/DeviceListControls';
 import { useAttributePreference } from '../common/util/preferences';
+import useFavourites from '../common/util/useFavourites';
 
 const MainMap = lazy(() => import('./MainMap'));
 
@@ -60,6 +62,12 @@ const useStyles = makeStyles()((theme) => ({
     gridArea: '1 / 1',
     zIndex: 4,
     display: 'flex',
+    flexDirection: 'column',
+    minHeight: 0,
+  },
+  listWrapper: {
+    flex: 1,
+    display: 'flex',
     minHeight: 0,
   },
 }));
@@ -74,6 +82,7 @@ const MainPage = () => {
   const mapOnSelect = useAttributePreference('mapOnSelect', true);
 
   const selectedDeviceId = useSelector((state) => state.devices.selectedId);
+  const devices = useSelector((state) => state.devices.items);
   const positions = useSelector((state) => state.session.positions);
   const [filteredPositions, setFilteredPositions] = useState([]);
   const selectedPosition = filteredPositions.find(
@@ -91,6 +100,13 @@ const MainPage = () => {
   const [filterSort, setFilterSort] = usePersistedState('filterSort', '');
   const [filterMap, setFilterMap] = usePersistedState('filterMap', false);
 
+  const { favourites } = useFavourites();
+  const [listMode, setListMode] = usePersistedState('deviceListMode', 'all');
+  // Fall back to All when nothing is starred, so the Favourites tab can never
+  // be a blank panel. Derived rather than written back, so unstarring
+  // everything and starring again returns you to the tab you chose.
+  const effectiveMode = favourites.length ? listMode : 'all';
+
   const [devicesOpen, setDevicesOpen] = useState(desktop);
   const [eventsOpen, setEventsOpen] = useState(false);
 
@@ -107,6 +123,8 @@ const MainPage = () => {
     filter,
     filterSort,
     filterMap,
+    favourites,
+    effectiveMode === 'favourites',
     positions,
     setFilteredDevices,
     setFilteredPositions,
@@ -156,7 +174,15 @@ const MainPage = () => {
             className={classes.contentList}
             style={devicesOpen ? {} : { visibility: 'hidden' }}
           >
-            <DeviceList devices={filteredDevices} />
+            <DeviceListControls
+              mode={effectiveMode}
+              setMode={setListMode}
+              totalCount={Object.keys(devices).length}
+              favouriteCount={favourites.length}
+            />
+            <div className={classes.listWrapper}>
+              <DeviceList devices={filteredDevices} />
+            </div>
           </Paper>
         </div>
         {desktop && (

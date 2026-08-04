@@ -16,9 +16,13 @@ import BatteryCharging60Icon from '@mui/icons-material/BatteryCharging60';
 import Battery20Icon from '@mui/icons-material/Battery20';
 import BatteryCharging20Icon from '@mui/icons-material/BatteryCharging20';
 import ErrorIcon from '@mui/icons-material/Error';
+import StarIcon from '@mui/icons-material/Star';
+import StarBorderIcon from '@mui/icons-material/StarBorder';
+import GpsFixedIcon from '@mui/icons-material/GpsFixed';
+import GpsNotFixedIcon from '@mui/icons-material/GpsNotFixed';
 import dayjs from 'dayjs';
 import relativeTime from 'dayjs/plugin/relativeTime';
-import { devicesActions } from '../store';
+import { devicesActions, followActions } from '../store';
 import {
   formatAlarm,
   formatBoolean,
@@ -31,6 +35,7 @@ import { mapIconKey, mapIcons } from '../map/core/preloadImages';
 import { useAdministrator } from '../common/util/permissions';
 import EngineIcon from '../resources/images/data/engine.svg?react';
 import { useAttributePreference } from '../common/util/preferences';
+import useFavourites from '../common/util/useFavourites';
 import GeofencesValue from '../common/components/GeofencesValue';
 import DriverValue from '../common/components/DriverValue';
 import MotionBar from './components/MotionBar';
@@ -63,6 +68,18 @@ const useStyles = makeStyles()((theme) => ({
   selected: {
     backgroundColor: theme.palette.action.selected,
   },
+  // Padding is left at the size="small" default so these line up with the
+  // status icons alongside them. Overriding it here made the interactive pair
+  // 6px wider than the decorative ones and threw the spacing out.
+  rowButton: {
+    padding: 5,
+  },
+  favouriteOn: {
+    color: theme.palette.warning.main,
+  },
+  followOn: {
+    color: theme.palette.primary.main,
+  },
 }));
 
 const DeviceRow = ({ devices, index, style }) => {
@@ -72,6 +89,8 @@ const DeviceRow = ({ devices, index, style }) => {
 
   const admin = useAdministrator();
   const selectedDeviceId = useSelector((state) => state.devices.selectedId);
+  const { isFavourite, toggleFavourite } = useFavourites();
+  const followedId = useSelector((state) => state.follow.deviceId);
 
   const item = devices[index];
   const position = useSelector((state) => state.session.positions[item.id]);
@@ -121,7 +140,15 @@ const DeviceRow = ({ devices, index, style }) => {
     <div style={style}>
       <ListItemButton
         key={item.id}
-        onClick={() => dispatch(devicesActions.selectId(item.id))}
+        onClick={() => {
+          // Selecting a different device ends following. Otherwise the map
+          // pans to what you tapped, then snaps back the moment the followed
+          // device reports.
+          if (followedId && followedId !== item.id) {
+            dispatch(followActions.clear());
+          }
+          dispatch(devicesActions.selectId(item.id));
+        }}
         disabled={!admin && item.disabled}
         selected={selectedDeviceId === item.id}
         className={selectedDeviceId === item.id ? classes.selected : null}
@@ -192,6 +219,49 @@ const DeviceRow = ({ devices, index, style }) => {
             )}
           </>
         )}
+        <Tooltip title={t('deviceFollow') || 'Follow'}>
+          <IconButton
+            className={classes.rowButton}
+            size="small"
+            aria-label={t('deviceFollow') || 'Follow'}
+            aria-pressed={followedId === item.id}
+            onClick={(event) => {
+              event.stopPropagation();
+              // Following implies looking at it, so make it the selection too -
+              // but only on the way on, or switching it off would nudge the map.
+              if (followedId !== item.id) {
+                dispatch(devicesActions.selectId(item.id));
+              }
+              dispatch(followActions.toggle(item.id));
+            }}
+          >
+            {followedId === item.id ? (
+              <GpsFixedIcon fontSize="small" className={classes.followOn} />
+            ) : (
+              <GpsNotFixedIcon fontSize="small" className={classes.neutral} />
+            )}
+          </IconButton>
+        </Tooltip>
+        <Tooltip title={t('sharedFavourite') || 'Favourite'}>
+          <IconButton
+            className={classes.rowButton}
+            size="small"
+            aria-label={t('sharedFavourite') || 'Favourite'}
+            aria-pressed={isFavourite(item.id)}
+            onClick={(event) => {
+              // The whole row is a button that selects the device, so the star
+              // has to stop the click before it gets there.
+              event.stopPropagation();
+              toggleFavourite(item.id);
+            }}
+          >
+            {isFavourite(item.id) ? (
+              <StarIcon fontSize="small" className={classes.favouriteOn} />
+            ) : (
+              <StarBorderIcon fontSize="small" className={classes.neutral} />
+            )}
+          </IconButton>
+        </Tooltip>
       </ListItemButton>
     </div>
   );

@@ -7,6 +7,8 @@ export default (
   filter,
   filterSort,
   filterMap,
+  favourites,
+  showFavourites,
   positions,
   setFilteredDevices,
   setFilteredPositions,
@@ -26,6 +28,7 @@ export default (
     };
 
     const filtered = Object.values(devices)
+      .filter((device) => !showFavourites || favourites.includes(device.id))
       .filter((device) => !filter.statuses.length || filter.statuses.includes(device.status))
       .filter(
         (device) =>
@@ -67,6 +70,8 @@ export default (
     filter,
     filterSort,
     filterMap,
+    favourites,
+    showFavourites,
     groups,
     devices,
     positions,
