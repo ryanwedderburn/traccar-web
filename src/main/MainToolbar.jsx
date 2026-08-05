@@ -27,6 +27,7 @@ import AddIcon from '@mui/icons-material/Add';
 import TuneIcon from '@mui/icons-material/Tune';
 import { useTranslation } from '../common/components/LocalizationProvider';
 import { useDeviceReadonly } from '../common/util/permissions';
+import useKiosk from '../common/util/useKiosk';
 import DeviceRow from './DeviceRow';
 
 const useStyles = makeStyles()((theme) => ({
@@ -62,6 +63,7 @@ const MainToolbar = ({
   const t = useTranslation();
 
   const deviceReadonly = useDeviceReadonly();
+  const kiosk = useKiosk();
 
   const groups = useSelector((state) => state.groups.items);
   const devices = useSelector((state) => state.devices.items);
@@ -212,15 +214,28 @@ const MainToolbar = ({
           </FormGroup>
         </div>
       </Popover>
-      <IconButton edge="end" onClick={() => navigate('/settings/device')} disabled={deviceReadonly}>
-        <Tooltip
-          open={!deviceReadonly && Object.keys(devices).length === 0}
-          title={t('deviceRegisterFirst')}
-          arrow
+      {/*
+        Hidden rather than disabled in kiosk. `deviceReadonly` already greys it
+        out for a spectator, but a control that can never do anything is
+        clutter - the same reasoning that hides the StatusCard action row - and
+        on a phone it is taking width from the search box, which is the one
+        thing on this toolbar they actually use.
+      */}
+      {!kiosk && (
+        <IconButton
+          edge="end"
+          onClick={() => navigate('/settings/device')}
+          disabled={deviceReadonly}
         >
-          <AddIcon />
-        </Tooltip>
-      </IconButton>
+          <Tooltip
+            open={!deviceReadonly && Object.keys(devices).length === 0}
+            title={t('deviceRegisterFirst')}
+            arrow
+          >
+            <AddIcon />
+          </Tooltip>
+        </IconButton>
+      )}
     </Toolbar>
   );
 };
