@@ -13,4 +13,11 @@ import { useSelector } from 'react-redux';
  * per-account decision - a server-wide default would put an admin into kiosk
  * mode with no visible way out of it.
  */
-export default () => useSelector((state) => Boolean(state.session.user?.attributes?.kiosk));
+
+// The attribute editor stores a real boolean, but only because `kiosk` is
+// declared in useUserAttributes.js. Typed by hand into a fresh key, or set by
+// a script through the API, it arrives as the string "true" - and the string
+// "false" is every bit as truthy. So parse rather than coerce.
+const truthy = (value) => value === true || value === 'true';
+
+export default () => useSelector((state) => truthy(state.session.user?.attributes?.kiosk));

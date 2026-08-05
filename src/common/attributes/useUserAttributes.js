@@ -71,6 +71,13 @@ export default (t) =>
         name: t('userBilling'),
         type: 'string',
       },
+      // Ours. Declared here mainly so the editor renders a checkbox and stores
+      // a real boolean - typed by hand it becomes the string "true", and the
+      // string "false" is every bit as truthy. See common/util/useKiosk.js.
+      kiosk: {
+        name: t('attributeUiKiosk'),
+        type: 'boolean',
+      },
     }),
     [t],
   );
