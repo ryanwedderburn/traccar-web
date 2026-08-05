@@ -19,7 +19,7 @@ const useStyles = makeStyles()((theme) => ({
     flexWrap: 'wrap',
     alignItems: 'center',
     gap: theme.spacing(1),
-    padding: theme.spacing(1, 1.5, 0),
+    padding: theme.spacing(1, 1.5, 0.75),
     flexShrink: 0,
   },
   select: {
