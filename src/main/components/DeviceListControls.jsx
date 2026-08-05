@@ -8,8 +8,16 @@ import { useTranslation } from '../../common/components/LocalizationProvider';
 /**
  * Sits between the search toolbar and the first device row.
  *
- * Favourites is disabled while nothing is starred, so the tab can never be an
- * empty panel with no explanation.
+ * Outside kiosk mode Favourites is disabled while nothing is starred, so the
+ * tab can never be an empty panel with no explanation.
+ *
+ * In kiosk mode the order reverses and Favourites leads, enabled even when
+ * empty. A spectator at an event with several hundred entrants opening onto
+ * All gets every rider plotted at once, which is unreadable and is not what
+ * they came for. Starting on an empty Favourites tab means the map starts
+ * blank and the first star they add is the first pin they see. DeviceListEmpty
+ * covers the blank panel this creates, which is why the disable is safe to
+ * drop here.
  *
  * The filter icon only appears on All, and restricts the *map* to favourites
  * while leaving the list complete. That is the point: with several hundred
@@ -53,11 +61,30 @@ const DeviceListControls = ({
   favouriteCount,
   mapFavouritesOnly,
   setMapFavouritesOnly,
+  kiosk,
 }) => {
   const { classes } = useStyles();
   const t = useTranslation();
 
   const mapFilterLabel = t('sharedFilterMap') || 'Filter on Map';
+
+  const allButton = (
+    <ToggleButton key="all" className={classes.button} value="all">
+      {`${t('sharedAll') || 'All'} (${totalCount})`}
+    </ToggleButton>
+  );
+
+  const favouritesButton = (
+    <ToggleButton
+      key="favourites"
+      className={classes.button}
+      value="favourites"
+      disabled={!kiosk && !favouriteCount}
+    >
+      <StarIcon fontSize="small" />
+      {`${t('sharedFavourites') || 'Favourites'} (${favouriteCount})`}
+    </ToggleButton>
+  );
 
   return (
     <div className={classes.root}>
@@ -72,13 +99,7 @@ const DeviceListControls = ({
           }
         }}
       >
-        <ToggleButton className={classes.button} value="all">
-          {`${t('sharedAll') || 'All'} (${totalCount})`}
-        </ToggleButton>
-        <ToggleButton className={classes.button} value="favourites" disabled={!favouriteCount}>
-          <StarIcon fontSize="small" />
-          {`${t('sharedFavourites') || 'Favourites'} (${favouriteCount})`}
-        </ToggleButton>
+        {kiosk ? [favouritesButton, allButton] : [allButton, favouritesButton]}
       </ToggleButtonGroup>
       {mode === 'all' && (
         <Tooltip title={mapFilterLabel}>

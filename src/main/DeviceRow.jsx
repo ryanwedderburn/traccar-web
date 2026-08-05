@@ -36,6 +36,7 @@ import { useAdministrator } from '../common/util/permissions';
 import EngineIcon from '../resources/images/data/engine.svg?react';
 import { useAttributePreference } from '../common/util/preferences';
 import useFavourites from '../common/util/useFavourites';
+import useKiosk from '../common/util/useKiosk';
 import GeofencesValue from '../common/components/GeofencesValue';
 import DriverValue from '../common/components/DriverValue';
 import MotionBar from './components/MotionBar';
@@ -91,6 +92,12 @@ const DeviceRow = ({ devices, index, style }) => {
   const selectedDeviceId = useSelector((state) => state.devices.selectedId);
   const { isFavourite, toggleFavourite } = useFavourites();
   const followedId = useSelector((state) => state.follow.deviceId);
+  // Kiosk drops the alarm, ignition and battery indicators from the row. They
+  // are fleet-operator telemetry: a spectator following a rider cannot act on
+  // any of them, and three icons per row that mean nothing to the reader are
+  // three icons of clutter across several hundred rows. Follow and Favourite
+  // stay because they are the only two things a spectator does here.
+  const kiosk = useKiosk();
 
   const item = devices[index];
   const position = useSelector((state) => state.session.positions[item.id]);
@@ -170,7 +177,7 @@ const DeviceRow = ({ devices, index, style }) => {
             secondary: { noWrap: true },
           }}
         />
-        {position && (
+        {position && !kiosk && (
           <>
             {position.attributes.hasOwnProperty('alarm') && (
               <Tooltip title={`${t('eventAlarm')}: ${formatAlarm(position.attributes.alarm, t)}`}>

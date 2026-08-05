@@ -13,9 +13,11 @@ import EventsDrawer from './EventsDrawer';
 import useFilter from './useFilter';
 import MainToolbar from './MainToolbar';
 import DeviceListControls from './components/DeviceListControls';
+import DeviceListEmpty from './components/DeviceListEmpty';
 import RouteFilter from './components/RouteFilter';
 import { useAttributePreference } from '../common/util/preferences';
 import useFavourites from '../common/util/useFavourites';
+import useKiosk from '../common/util/useKiosk';
 import useRouteFilter from '../common/util/useRouteFilter';
 
 const MainMap = lazy(() => import('./MainMap'));
@@ -103,11 +105,20 @@ const MainPage = () => {
   const [filterMap, setFilterMap] = usePersistedState('filterMap', false);
 
   const { favourites } = useFavourites();
-  const [listMode, setListMode] = usePersistedState('deviceListMode', 'all');
-  // Fall back to All when nothing is starred, so the Favourites tab can never
-  // be a blank panel. Derived rather than written back, so unstarring
-  // everything and starring again returns you to the tab you chose.
-  const effectiveMode = favourites.length ? listMode : 'all';
+  // Kiosk lands on Favourites and stays there when it is empty; everyone else
+  // lands on All. At ~450 entrants opening onto All plots the entire field at
+  // once, which is a mess and is not what a spectator came for - so the
+  // spectator build starts blank and fills in as they star riders. App.jsx
+  // holds MainPage behind a loader until the session is fetched, so this is
+  // known at first render and usePersistedState captures the right default.
+  const kiosk = useKiosk();
+  const [listMode, setListMode] = usePersistedState('deviceListMode', kiosk ? 'favourites' : 'all');
+  // Outside kiosk, fall back to All when nothing is starred so the Favourites
+  // tab can never be a blank panel. Derived rather than written back, so
+  // unstarring everything and starring again returns you to the tab you chose.
+  // Kiosk opts out: there the blank panel is the intended landing state and
+  // DeviceListEmpty explains it.
+  const effectiveMode = kiosk || favourites.length ? listMode : 'all';
   const showFavourites = effectiveMode === 'favourites';
   // Favourites filters the map as well as the list. Filtering only the list is
   // half a feature with hundreds of devices - you get a clean list and a wall
@@ -115,7 +126,10 @@ const MainPage = () => {
   // own for the case where a complete map is actually wanted.
   const filterMapOrFavourites = filterMap || showFavourites;
   // On All, restrict the map to favourites while leaving the list whole.
-  const [mapFavouritesOnly, setMapFavouritesOnly] = usePersistedState('mapFavouritesOnly', false);
+  // On by default in kiosk, or the flood Favourites-first exists to avoid comes
+  // straight back the moment a spectator taps All to search for a rider. The
+  // funnel still turns it off for anyone who wants the whole field.
+  const [mapFavouritesOnly, setMapFavouritesOnly] = usePersistedState('mapFavouritesOnly', kiosk);
   // Which event's routes and points to show. Per browser, like every other
   // filter here - so a spectator's last combination is their preset.
   const [routeFilter, setRouteFilter] = usePersistedState('routeFilter', {
@@ -227,9 +241,14 @@ const MainPage = () => {
               favouriteCount={favourites.length}
               mapFavouritesOnly={mapFavouritesOnly}
               setMapFavouritesOnly={setMapFavouritesOnly}
+              kiosk={kiosk}
             />
             <div className={classes.listWrapper}>
-              <DeviceList devices={filteredDevices} />
+              {showFavourites && !favourites.length ? (
+                <DeviceListEmpty onBrowse={() => setListMode('all')} />
+              ) : (
+                <DeviceList devices={filteredDevices} />
+              )}
             </div>
           </Paper>
         </div>
