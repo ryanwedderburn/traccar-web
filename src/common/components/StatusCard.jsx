@@ -35,6 +35,7 @@ import usePositionAttributes from '../attributes/usePositionAttributes';
 import { devicesActions } from '../../store';
 import { useCatch, useCatchCallback } from '../../reactHelper';
 import { useAttributePreference } from '../util/preferences';
+import useKiosk from '../util/useKiosk';
 import fetchOrThrow from '../util/fetchOrThrow';
 
 const useStyles = makeStyles()((theme, { desktopPadding }) => ({
@@ -124,6 +125,7 @@ const StatusCard = ({ deviceId, position, onClose, disableActions, desktopPaddin
 
   const readonly = useRestriction('readonly');
   const deviceReadonly = useDeviceReadonly();
+  const kiosk = useKiosk();
 
   const shareDisabled = useSelector((state) => state.session.server.attributes.disableShare);
   const user = useSelector((state) => state.session.user);
@@ -219,64 +221,76 @@ const StatusCard = ({ deviceId, position, onClose, disableActions, desktopPaddin
                           />
                         ))}
                     </TableBody>
-                    <TableFooter>
-                      <TableRow>
-                        <TableCell colSpan={2} className={classes.cell}>
-                          <Typography variant="body2">
-                            <Link component={RouterLink} to={`/position/${position.id}`}>
-                              {t('sharedShowDetails')}
-                            </Link>
-                          </Typography>
-                        </TableCell>
-                      </TableRow>
-                    </TableFooter>
+                    {!kiosk && (
+                      <TableFooter>
+                        <TableRow>
+                          <TableCell colSpan={2} className={classes.cell}>
+                            <Typography variant="body2">
+                              <Link component={RouterLink} to={`/position/${position.id}`}>
+                                {t('sharedShowDetails')}
+                              </Link>
+                            </Typography>
+                          </TableCell>
+                        </TableRow>
+                      </TableFooter>
+                    )}
                   </Table>
                 </CardContent>
               )}
-              <CardActions className={classes.actions} disableSpacing>
-                <Tooltip title={t('sharedExtra')}>
-                  <IconButton
-                    color="secondary"
-                    onClick={(e) => setAnchorEl(e.currentTarget)}
-                    disabled={!position}
-                  >
-                    <PendingIcon />
-                  </IconButton>
-                </Tooltip>
-                <Tooltip title={t('reportReplay')}>
-                  <IconButton
-                    onClick={() => navigate(`/replay?deviceId=${deviceId}`)}
-                    disabled={disableActions || !position}
-                  >
-                    <RouteIcon />
-                  </IconButton>
-                </Tooltip>
-                <Tooltip title={t('commandTitle')}>
-                  <IconButton
-                    onClick={() => navigate(`/settings/device/${deviceId}/command`)}
-                    disabled={disableActions}
-                  >
-                    <SendIcon />
-                  </IconButton>
-                </Tooltip>
-                <Tooltip title={t('sharedEdit')}>
-                  <IconButton
-                    onClick={() => navigate(`/settings/device/${deviceId}`)}
-                    disabled={disableActions || deviceReadonly}
-                  >
-                    <EditIcon />
-                  </IconButton>
-                </Tooltip>
-                <Tooltip title={t('sharedRemove')}>
-                  <IconButton
-                    color="error"
-                    onClick={() => setRemoving(true)}
-                    disabled={disableActions || deviceReadonly}
-                  >
-                    <DeleteIcon />
-                  </IconButton>
-                </Tooltip>
-              </CardActions>
+              {/*
+                Hidden outright in kiosk mode rather than disabled. readonly
+                already greys out Edit and Delete, but a row of five dead icons
+                is more distracting than no row at all - and Replay and Send
+                Command are not covered by readonly, so they stay live and lead
+                a spectator off the map. The extras Menu and RemoveDialog below
+                are left mounted: they have no trigger without these buttons.
+              */}
+              {!kiosk && (
+                <CardActions className={classes.actions} disableSpacing>
+                  <Tooltip title={t('sharedExtra')}>
+                    <IconButton
+                      color="secondary"
+                      onClick={(e) => setAnchorEl(e.currentTarget)}
+                      disabled={!position}
+                    >
+                      <PendingIcon />
+                    </IconButton>
+                  </Tooltip>
+                  <Tooltip title={t('reportReplay')}>
+                    <IconButton
+                      onClick={() => navigate(`/replay?deviceId=${deviceId}`)}
+                      disabled={disableActions || !position}
+                    >
+                      <RouteIcon />
+                    </IconButton>
+                  </Tooltip>
+                  <Tooltip title={t('commandTitle')}>
+                    <IconButton
+                      onClick={() => navigate(`/settings/device/${deviceId}/command`)}
+                      disabled={disableActions}
+                    >
+                      <SendIcon />
+                    </IconButton>
+                  </Tooltip>
+                  <Tooltip title={t('sharedEdit')}>
+                    <IconButton
+                      onClick={() => navigate(`/settings/device/${deviceId}`)}
+                      disabled={disableActions || deviceReadonly}
+                    >
+                      <EditIcon />
+                    </IconButton>
+                  </Tooltip>
+                  <Tooltip title={t('sharedRemove')}>
+                    <IconButton
+                      color="error"
+                      onClick={() => setRemoving(true)}
+                      disabled={disableActions || deviceReadonly}
+                    >
+                      <DeleteIcon />
+                    </IconButton>
+                  </Tooltip>
+                </CardActions>
+              )}
             </Card>
           </Rnd>
         )}
