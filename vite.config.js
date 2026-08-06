@@ -22,7 +22,17 @@ export default defineConfig(() => ({
     VitePWA({
       includeAssets: ['favicon.ico', 'apple-touch-icon-180x180.png'],
       workbox: {
-        navigateFallbackDenylist: [/^\/api/],
+        // The service worker answers every *navigation* with the precached
+        // index.html, so any path that is not a React route must be listed
+        // here or it silently becomes the app shell. Browsing to such a path
+        // gives a blank page - React boots, the router matches nothing, and
+        // nothing in the console says the service worker substituted the
+        // document. The server is never even asked.
+        //
+        // /onboard.html is served from Traccar's web.override directory and is
+        // not part of this build at all, so it needs the same exemption /api
+        // has. See docs/ONBOARD-STATION.md.
+        navigateFallbackDenylist: [/^\/api/, /^\/onboard\.html$/],
         globPatterns: ['**/*.{js,css,html,woff,woff2,mp3}'],
       },
       manifest: {
