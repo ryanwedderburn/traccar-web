@@ -18,8 +18,11 @@ const useStyles = makeStyles()((theme) => ({
     display: 'flex',
     flexWrap: 'wrap',
     alignItems: 'center',
-    gap: theme.spacing(1),
-    padding: theme.spacing(1, 1.5, 0.75),
+    // 12px everywhere: the gap between the day and class rows, the gap to the
+    // search row below, and the margin to the screen edge. One rhythm for the
+    // whole header.
+    gap: theme.spacing(1.5),
+    padding: theme.spacing(0.75, 1.5),
     flexShrink: 0,
   },
   select: {

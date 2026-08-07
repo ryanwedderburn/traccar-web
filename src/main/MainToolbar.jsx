@@ -34,6 +34,15 @@ const useStyles = makeStyles()((theme) => ({
   toolbar: {
     display: 'flex',
     gap: theme.spacing(1),
+    // Aligned with RouteFilter and DeviceListControls so all four header rows
+    // share one left and right edge. MUI's Toolbar defaults to 16px (24px from
+    // sm up) where the custom rows use 12px, which set the search box 4px
+    // inside everything above and below it.
+    //
+    // minHeight:auto hands the row height back to this padding; the default 56
+    // is taller than the input needs and made the vertical rhythm uneven.
+    minHeight: 'auto',
+    padding: theme.spacing(0.75, 1.5),
   },
   filterPanel: {
     display: 'flex',
@@ -79,7 +88,7 @@ const MainToolbar = ({
 
   return (
     <Toolbar ref={toolbarRef} className={classes.toolbar}>
-      <IconButton edge="start" onClick={() => setDevicesOpen(!devicesOpen)}>
+      <IconButton onClick={() => setDevicesOpen(!devicesOpen)}>
         {devicesOpen ? <MapIcon /> : <DnsIcon />}
       </IconButton>
       <OutlinedInput
@@ -222,11 +231,7 @@ const MainToolbar = ({
         thing on this toolbar they actually use.
       */}
       {!kiosk && (
-        <IconButton
-          edge="end"
-          onClick={() => navigate('/settings/device')}
-          disabled={deviceReadonly}
-        >
+        <IconButton onClick={() => navigate('/settings/device')} disabled={deviceReadonly}>
           <Tooltip
             open={!deviceReadonly && Object.keys(devices).length === 0}
             title={t('deviceRegisterFirst')}

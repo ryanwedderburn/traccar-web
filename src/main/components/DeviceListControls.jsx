@@ -31,8 +31,10 @@ const useStyles = makeStyles()((theme) => ({
     gap: theme.spacing(1),
     // Bottom padding matters now that this sits in the header rather than in
     // the list panel: the first device row begins immediately below it, and
-    // react-window's container has no margin of its own.
-    padding: theme.spacing(1, 1.5),
+    // react-window's container has no margin of its own. It carries the full
+    // 12px on its own for that reason, where the rows above split it between
+    // neighbours.
+    padding: theme.spacing(0.75, 1.5, 1.5),
     flexShrink: 0,
   },
   group: {
