@@ -20,13 +20,26 @@ const cache = {
 
 const AppThemeProvider = ({ children }) => {
   const server = useSelector((state) => state.session.server);
+  // Brand colours can come from the signed-in account as well as the server -
+  // one install, several events, and a spectator account belongs to exactly
+  // one of them. See common/theme/palette.js.
+  const user = useSelector((state) => state.session.user);
   const { direction } = useLocalization();
 
+  // Most specific wins: account, then server, then the OS preference. An event
+  // brand that only works on a dark map should not be at the mercy of whichever
+  // way the spectator's phone happens to be set.
+  const userDarkMode = user?.attributes?.darkMode;
   const serverDarkMode = server?.attributes?.darkMode;
   const preferDarkMode = useMediaQuery('(prefers-color-scheme: dark)');
-  const darkMode = serverDarkMode !== undefined ? serverDarkMode : preferDarkMode;
+  let darkMode = preferDarkMode;
+  if (userDarkMode !== undefined) {
+    darkMode = userDarkMode;
+  } else if (serverDarkMode !== undefined) {
+    darkMode = serverDarkMode;
+  }
 
-  const themeInstance = theme(server, darkMode, direction);
+  const themeInstance = theme(server, user, darkMode, direction);
 
   return (
     <CacheProvider value={cache[direction]}>

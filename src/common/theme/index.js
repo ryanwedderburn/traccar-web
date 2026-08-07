@@ -4,17 +4,17 @@ import palette from './palette';
 import dimensions from './dimensions';
 import components from './components';
 
-export default (server, darkMode, direction) =>
+export default (server, user, darkMode, direction) =>
   useMemo(
     () =>
       createTheme({
         typography: {
           fontFamily: 'Roboto,Segoe UI,Helvetica Neue,Arial,sans-serif',
         },
-        palette: palette(server, darkMode),
+        palette: palette(server, user, darkMode),
         direction,
         dimensions,
         components,
       }),
-    [server, darkMode, direction],
+    [server, user, darkMode, direction],
   );

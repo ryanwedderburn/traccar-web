@@ -78,6 +78,25 @@ export default (t) =>
         name: t('attributeUiKiosk'),
         type: 'boolean',
       },
+      // Ours. Same keys the server record uses, so the meaning is already
+      // familiar - these simply win over it for this account. Declared here so
+      // the editor renders a colour picker rather than a text box, which also
+      // keeps the value in the #rrggbb form palette.js will accept: anything
+      // else is silently ignored and falls back to indigo.
+      colorPrimary: {
+        name: t('serverColorPrimary'),
+        type: 'string',
+        dataType: 'color',
+      },
+      colorSecondary: {
+        name: t('serverColorSecondary'),
+        type: 'string',
+        dataType: 'color',
+      },
+      darkMode: {
+        name: t('settingsDarkMode'),
+        type: 'boolean',
+      },
     }),
     [t],
   );
