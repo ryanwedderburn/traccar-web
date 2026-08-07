@@ -206,15 +206,16 @@ const MainPage = () => {
             stays. Left in the list panel it was unreachable in exactly the
             view it affects.
 
-            Hidden on a phone while the list is open, though. There the list and
-            map are separate screens, so route controls above a list of riders
-            are three rows of chrome for something you cannot see - and stacking
-            them under All/Favourites reads as one filter when they are two
-            unrelated ideas. Desktop shows both, because both are visible.
+            Always rendered. It was previously hidden on a phone while the list
+            was open, on the reasoning that route controls above a list of
+            riders are chrome for something you cannot see. Testing killed that:
+            spectators never found the controls at all, because the list is
+            where they spend their time and switching to the map to change the
+            day is not a thing anyone thinks to try. Two rows of chrome is a
+            smaller cost than a control nobody knows exists - and on a
+            450-entrant field, filtering by class and day is most of the point.
           */}
-          {(desktop || !devicesOpen) && (
-            <RouteFilter filter={effectiveRouteFilter} setFilter={setRouteFilter} />
-          )}
+          <RouteFilter filter={effectiveRouteFilter} setFilter={setRouteFilter} />
         </Paper>
         <div className={classes.middle}>
           {!desktop && (
