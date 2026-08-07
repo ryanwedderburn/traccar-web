@@ -13,7 +13,6 @@ import EventsDrawer from './EventsDrawer';
 import useFilter from './useFilter';
 import MainToolbar from './MainToolbar';
 import DeviceListControls from './components/DeviceListControls';
-import DeviceListEmpty from './components/DeviceListEmpty';
 import RouteFilter from './components/RouteFilter';
 import { useAttributePreference } from '../common/util/preferences';
 import useFavourites from '../common/util/useFavourites';
@@ -105,20 +104,29 @@ const MainPage = () => {
   const [filterMap, setFilterMap] = usePersistedState('filterMap', false);
 
   const { favourites } = useFavourites();
-  // Kiosk lands on Favourites and stays there when it is empty; everyone else
-  // lands on All. At ~450 entrants opening onto All plots the entire field at
-  // once, which is a mess and is not what a spectator came for - so the
-  // spectator build starts blank and fills in as they star riders. App.jsx
-  // holds MainPage behind a loader until the session is fetched, so this is
-  // known at first render and usePersistedState captures the right default.
+  // Kiosk prefers Favourites; everyone else prefers All. It is a preference
+  // rather than a landing state - with nothing starred yet, effectiveMode
+  // below falls back to All either way, so this only decides where a spectator
+  // returns to once they have a watch list.
+  //
+  // App.jsx holds MainPage behind a loader until the session is fetched, so
+  // kiosk is known at first render and usePersistedState captures the right
+  // default rather than a stale one.
   const kiosk = useKiosk();
   const [listMode, setListMode] = usePersistedState('deviceListMode', kiosk ? 'favourites' : 'all');
-  // Outside kiosk, fall back to All when nothing is starred so the Favourites
-  // tab can never be a blank panel. Derived rather than written back, so
-  // unstarring everything and starring again returns you to the tab you chose.
-  // Kiosk opts out: there the blank panel is the intended landing state and
-  // DeviceListEmpty explains it.
-  const effectiveMode = kiosk || favourites.length ? listMode : 'all';
+  // Fall back to All whenever nothing is starred - kiosk included. Landing on
+  // an empty Favourites tab was the original kiosk design, on the grounds that
+  // a blank map beats 450 pins. It does, but the list has to be usable too: a
+  // spectator tapping the search box on an empty Favourites tab is searching
+  // nothing, which is the one thing they came to do.
+  //
+  // The map stays blank anyway, because mapFavouritesOnly is on in kiosk and
+  // the All tab does not change that. So this gives both halves - empty map,
+  // searchable list - rather than trading one for the other.
+  //
+  // Derived rather than written back, so unstarring everything and starring
+  // again returns you to the tab you chose.
+  const effectiveMode = favourites.length ? listMode : 'all';
   const showFavourites = effectiveMode === 'favourites';
   // Favourites filters the map as well as the list. Filtering only the list is
   // half a feature with hundreds of devices - you get a clean list and a wall
@@ -245,11 +253,7 @@ const MainPage = () => {
               kiosk={kiosk}
             />
             <div className={classes.listWrapper}>
-              {showFavourites && !favourites.length ? (
-                <DeviceListEmpty onBrowse={() => setListMode('all')} />
-              ) : (
-                <DeviceList devices={filteredDevices} />
-              )}
+              <DeviceList devices={filteredDevices} />
             </div>
           </Paper>
         </div>

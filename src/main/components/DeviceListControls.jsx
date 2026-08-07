@@ -8,16 +8,14 @@ import { useTranslation } from '../../common/components/LocalizationProvider';
 /**
  * Sits between the search toolbar and the first device row.
  *
- * Outside kiosk mode Favourites is disabled while nothing is starred, so the
- * tab can never be an empty panel with no explanation.
+ * Favourites is disabled while nothing is starred, so the tab can never be an
+ * empty panel - and more to the point, so the search box always has something
+ * to search.
  *
- * In kiosk mode the order reverses and Favourites leads, enabled even when
- * empty. A spectator at an event with several hundred entrants opening onto
- * All gets every rider plotted at once, which is unreadable and is not what
- * they came for. Starting on an empty Favourites tab means the map starts
- * blank and the first star they add is the first pin they see. DeviceListEmpty
- * covers the blank panel this creates, which is why the disable is safe to
- * drop here.
+ * In kiosk mode the order reverses and Favourites leads, because that is where
+ * a spectator ends up once they have starred someone. Until then MainPage
+ * falls back to All, and the map stays empty regardless because the map filter
+ * is independent of which tab is showing.
  *
  * The filter icon only appears on All, and restricts the *map* to favourites
  * while leaving the list complete. That is the point: with several hundred
@@ -79,7 +77,7 @@ const DeviceListControls = ({
       key="favourites"
       className={classes.button}
       value="favourites"
-      disabled={!kiosk && !favouriteCount}
+      disabled={!favouriteCount}
     >
       <StarIcon fontSize="small" />
       {`${t('sharedFavourites') || 'Favourites'} (${favouriteCount})`}
