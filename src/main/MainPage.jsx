@@ -148,14 +148,25 @@ const MainPage = () => {
   // A spectator granted one event should not be asked to choose it. Derived
   // rather than written back, so granting a second event later just makes the
   // selector appear.
+  //
+  // A persisted event that no longer exists is discarded rather than applied.
+  // Renaming an event - ROA2026 to ROA-2026, 2026-08-07 - leaves every browser
+  // holding a value nothing matches, and the failure is silent and total: the
+  // routes, the day and class options and the POI list all scope to the event
+  // first, so all three empty at once. Worse, there is then no control to fix
+  // it with, because the event selector hides itself when only one event
+  // exists. Treating an unknown value as unset makes it self-healing.
   const { events: availableEvents } = useRouteFilter(routeFilter);
-  const effectiveRouteFilter = useMemo(
-    () =>
-      availableEvents.length === 1 && !routeFilter.event
-        ? { ...routeFilter, event: availableEvents[0] }
-        : routeFilter,
-    [availableEvents, routeFilter],
-  );
+  const effectiveRouteFilter = useMemo(() => {
+    if (routeFilter.event && availableEvents.includes(routeFilter.event)) {
+      return routeFilter;
+    }
+    // Nothing selected, or a selection that has gone away. Fall back to the
+    // only event when there is exactly one, otherwise show everything - both
+    // of which leave the user somewhere they can see and act on.
+    const event = availableEvents.length === 1 ? availableEvents[0] : null;
+    return event === routeFilter.event ? routeFilter : { ...routeFilter, event };
+  }, [availableEvents, routeFilter]);
 
   const [devicesOpen, setDevicesOpen] = useState(desktop);
   const [eventsOpen, setEventsOpen] = useState(false);
