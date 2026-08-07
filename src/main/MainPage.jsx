@@ -264,7 +264,12 @@ const MainPage = () => {
         </div>
         {desktop && (
           <div className={classes.footer}>
-            <BottomMenu />
+            {/*
+              The filter is passed rather than read from localStorage inside
+              BottomMenu: usePersistedState instances do not notify each other,
+              so a second reader would show the previous event until remount.
+            */}
+            <BottomMenu routeFilter={effectiveRouteFilter} />
           </div>
         )}
       </div>

@@ -16,13 +16,16 @@ import SettingsIcon from '@mui/icons-material/Settings';
 import MapIcon from '@mui/icons-material/Map';
 import PersonIcon from '@mui/icons-material/Person';
 import ExitToAppIcon from '@mui/icons-material/ExitToApp';
+import PlaceIcon from '@mui/icons-material/Place';
 
 import { sessionActions } from '../../store';
 import { useTranslation } from './LocalizationProvider';
 import { useRestriction } from '../util/permissions';
 import { nativePostMessage } from './NativeInterface';
+import useWaypoints from '../util/waypoints';
+import WaypointsDialog from './WaypointsDialog';
 
-const BottomMenu = () => {
+const BottomMenu = ({ routeFilter }) => {
   const navigate = useNavigate();
   const location = useLocation();
   const dispatch = useDispatch();
@@ -36,6 +39,12 @@ const BottomMenu = () => {
   const selectedDeviceId = useSelector((state) => state.devices.selectedId);
 
   const [anchorEl, setAnchorEl] = useState(null);
+  const [waypointsOpen, setWaypointsOpen] = useState(false);
+
+  // Shown only where there is somewhere to go, the same way RouteFilter hides
+  // itself until the data carries an event. An install that has never run a
+  // race sees the bar it has always seen.
+  const waypoints = useWaypoints(routeFilter);
 
   const currentSelection = () => {
     if (location.pathname === `/settings/user/${user.id}`) {
@@ -114,6 +123,9 @@ const BottomMenu = () => {
       case 'settings':
         navigate('/settings/preferences?menu=true');
         break;
+      case 'poi':
+        setWaypointsOpen(true);
+        break;
       case 'account':
         setAnchorEl(event.currentTarget);
         break;
@@ -137,6 +149,18 @@ const BottomMenu = () => {
           }
           value="map"
         />
+        {/*
+          Opens a dialog rather than navigating, so `currentSelection()` never
+          returns 'poi' and the Map tab stays highlighted behind it. That is
+          deliberate: this is an action, not a place.
+        */}
+        {waypoints.length > 0 && (
+          <BottomNavigationAction
+            label={t('sharedPoints') || 'POI'}
+            icon={<PlaceIcon />}
+            value="poi"
+          />
+        )}
         {!disableReports && (
           <BottomNavigationAction
             label={t('reportTitle')}
@@ -169,6 +193,11 @@ const BottomMenu = () => {
           <Typography color="error">{t('loginLogout')}</Typography>
         </MenuItem>
       </Menu>
+      <WaypointsDialog
+        open={waypointsOpen}
+        onClose={() => setWaypointsOpen(false)}
+        routeFilter={routeFilter}
+      />
     </Paper>
   );
 };
