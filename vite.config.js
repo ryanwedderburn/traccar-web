@@ -29,10 +29,18 @@ export default defineConfig(() => ({
         // nothing in the console says the service worker substituted the
         // document. The server is never even asked.
         //
-        // /onboard.html is served from Traccar's web.override directory and is
-        // not part of this build at all, so it needs the same exemption /api
-        // has. See docs/ONBOARD-STATION.md.
-        navigateFallbackDenylist: [/^\/api/, /^\/onboard\.html$/],
+        // Pages served from Traccar's web.override directory are not part of
+        // this build at all, so they need the same exemption /api has.
+        //
+        // Matched by SHAPE rather than by name - any top-level *.html - because
+        // listing them individually failed the first time it was tested: adding
+        // setup.html alongside onboard.html would have shipped a page that
+        // renders blank for anyone with the app cached, with nothing in the
+        // console and the server never asked. No React route ends in .html, so
+        // this cannot shadow one.
+        //
+        // See docs/ONBOARD-STATION.md and docs/ONBOARD-REMOTE.md.
+        navigateFallbackDenylist: [/^\/api/, /^\/[\w-]+\.html$/],
         globPatterns: ['**/*.{js,css,html,woff,woff2,mp3}'],
       },
       manifest: {
