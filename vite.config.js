@@ -20,6 +20,29 @@ export default defineConfig(() => ({
     svgr(),
     react(),
     VitePWA({
+      // Upstream leaves this at the default 'prompt', where a new worker
+      // installs and then WAITS until the user taps the refresh snackbar in
+      // UpdateController or closes every tab on the origin. Nobody does either:
+      // a deploy reached a normal browser only after a hard reload, which is
+      // why "works in a private window" was the signature of three separate
+      // problems in one day - private windows have no worker and always get the
+      // current build.
+      //
+      // With autoUpdate the new worker skips waiting and claims clients, so a
+      // deploy lands on the next load.
+      //
+      // The cost, accepted deliberately: a client can reload itself while
+      // someone is using it. UpdateController polls at
+      // `serviceWorkerUpdateInterval` (default one hour), so a spectator
+      // watching the race could see the page refresh mid-event. A brief reload
+      // beats a spectator on a stale build for the whole weekend, which is the
+      // alternative - and during an event the deploy freeze makes it moot.
+      //
+      // UpdateController is left alone. Its snackbar is now inert because
+      // needRefresh never becomes true, but its periodic update() check is what
+      // makes a long-lived tab notice a deploy at all, and keeping the file
+      // untouched keeps the rebase surface at zero.
+      registerType: 'autoUpdate',
       includeAssets: ['favicon.ico', 'apple-touch-icon-180x180.png'],
       workbox: {
         // The service worker answers every *navigation* with the precached
