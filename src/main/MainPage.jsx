@@ -194,7 +194,28 @@ const MainPage = () => {
         </Suspense>
       )}
       <div className={classes.sidebar}>
+        {/*
+          Header order is deliberate, and it is grouped by what each control
+          acts on rather than by what it is.
+
+            Day      \  filter the ROUTES drawn on the map
+            Class    /
+            Search   \  filter the RIDER LIST
+            Fav/All  /
+
+          The last two are adjacent because they are one idea: Favourites/All
+          is the scope the search runs against. Separated - which they were,
+          with the route filter between them - a search returning nothing is
+          indistinguishable from a rider who is not in the event, and the
+          spectator has no way to tell that flipping to All would find them.
+
+          Both are always rendered, including while the map is showing. Route
+          controls were hidden on a phone once and spectators simply never
+          found them; the same argument applies to knowing which set you are
+          looking at.
+        */}
         <Paper square elevation={3} className={classes.header}>
+          <RouteFilter filter={effectiveRouteFilter} setFilter={setRouteFilter} />
           <MainToolbar
             filteredDevices={filteredDevices}
             devicesOpen={devicesOpen}
@@ -208,22 +229,15 @@ const MainPage = () => {
             filterMap={filterMap}
             setFilterMap={setFilterMap}
           />
-          {/*
-            In the header rather than with the device list: this filters the
-            map, and on a phone the list collapses away entirely while the map
-            stays. Left in the list panel it was unreachable in exactly the
-            view it affects.
-
-            Always rendered. It was previously hidden on a phone while the list
-            was open, on the reasoning that route controls above a list of
-            riders are chrome for something you cannot see. Testing killed that:
-            spectators never found the controls at all, because the list is
-            where they spend their time and switching to the map to change the
-            day is not a thing anyone thinks to try. Two rows of chrome is a
-            smaller cost than a control nobody knows exists - and on a
-            450-entrant field, filtering by class and day is most of the point.
-          */}
-          <RouteFilter filter={effectiveRouteFilter} setFilter={setRouteFilter} />
+          <DeviceListControls
+            mode={effectiveMode}
+            setMode={setListMode}
+            totalCount={Object.keys(devices).length}
+            favouriteCount={favourites.length}
+            mapFavouritesOnly={mapFavouritesOnly}
+            setMapFavouritesOnly={setMapFavouritesOnly}
+            kiosk={kiosk}
+          />
         </Paper>
         <div className={classes.middle}>
           {!desktop && (
@@ -243,15 +257,6 @@ const MainPage = () => {
             className={classes.contentList}
             style={devicesOpen ? {} : { visibility: 'hidden' }}
           >
-            <DeviceListControls
-              mode={effectiveMode}
-              setMode={setListMode}
-              totalCount={Object.keys(devices).length}
-              favouriteCount={favourites.length}
-              mapFavouritesOnly={mapFavouritesOnly}
-              setMapFavouritesOnly={setMapFavouritesOnly}
-              kiosk={kiosk}
-            />
             <div className={classes.listWrapper}>
               <DeviceList devices={filteredDevices} />
             </div>
