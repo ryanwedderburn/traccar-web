@@ -29,5 +29,14 @@ export default () => {
     [dispatch, userId],
   );
 
-  return { favourites, isFavourite, toggleFavourite };
+  // `stored` is the raw list, before dropping ids whose device has not loaded
+  // yet. Callers deciding something at first render - before the websocket has
+  // delivered devices - need to know whether this browser has ever starred
+  // anything, which `favourites` cannot tell them on the first paint.
+  return {
+    favourites,
+    stored,
+    isFavourite,
+    toggleFavourite,
+  };
 };

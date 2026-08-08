@@ -4,10 +4,11 @@ import { makeStyles } from 'tss-react/mui';
 import { useTheme } from '@mui/material/styles';
 import useMediaQuery from '@mui/material/useMediaQuery';
 import { useDispatch, useSelector } from 'react-redux';
+import { useSearchParams } from 'react-router-dom';
 import DeviceList from './DeviceList';
 import BottomMenu from '../common/components/BottomMenu';
 import StatusCard from '../common/components/StatusCard';
-import { devicesActions } from '../store';
+import { devicesActions, followActions } from '../store';
 import usePersistedState from '../common/util/usePersistedState';
 import EventsDrawer from './EventsDrawer';
 import useFilter from './useFilter';
@@ -112,7 +113,7 @@ const MainPage = () => {
   const [filterSort, setFilterSort] = usePersistedState('filterSort', '');
   const [filterMap, setFilterMap] = usePersistedState('filterMap', false);
 
-  const { favourites } = useFavourites();
+  const { favourites, stored: storedFavourites, isFavourite, toggleFavourite } = useFavourites();
   // Kiosk prefers Favourites; everyone else prefers All. It is a preference
   // rather than a landing state - with nothing starred yet, effectiveMode
   // below falls back to All either way, so this only decides where a spectator
@@ -177,7 +178,18 @@ const MainPage = () => {
     return event === routeFilter.event ? routeFilter : { ...routeFilter, event };
   }, [availableEvents, routeFilter]);
 
-  const [devicesOpen, setDevicesOpen] = useState(desktop);
+  // On a phone the list used to start closed, and the map starts empty by
+  // design, so a spectator opening a signage link landed on a blank screen with
+  // nothing to act on. Feedback from a first-time viewer, 2026-08-08: "very
+  // complicated, lots of steps, you might need to send a video out with the
+  // link" - and every step they were talked through was recovering from that
+  // first screen.
+  //
+  // So: open the list when this browser has never starred anyone. A returning
+  // spectator, who has a watch list and wants the map, still lands on the map.
+  // Reads the raw stored list rather than `favourites`, which is empty on the
+  // first paint until the websocket delivers devices.
+  const [devicesOpen, setDevicesOpen] = useState(desktop || storedFavourites.length === 0);
   const [eventsOpen, setEventsOpen] = useState(false);
 
   const onEventsClick = useCallback(() => setEventsOpen(true), [setEventsOpen]);
@@ -187,6 +199,58 @@ const MainPage = () => {
       setDevicesOpen(false);
     }
   }, [desktop, mapOnSelect, selectedDeviceId]);
+
+  /**
+   * `?follow=906` - open straight onto one rider, starred and followed.
+   *
+   * A spectator sent a bare signage link has to find the list, search a field
+   * of several hundred, star the right person and switch tabs. Family sent a
+   * link for their own rider should have to do none of it, and this is what
+   * the rider's own "share with crew and supporters" step hands out.
+   *
+   * MATCHED ON RACE NUMBER, not uniqueId. Devices are named "906 Vivian
+   * Maclachlan" by both generators, so the number is the first token - and
+   * uniqueId is deliberately withheld from accounts that cannot edit devices
+   * (it is a bearer credential), so a spectator session cannot see it at all.
+   * The number is on the bike anyway.
+   *
+   * The parameter is consumed once and removed from the URL. Otherwise a
+   * spectator who un-stars the rider would find them starred again on the next
+   * refresh, which is the kind of thing that makes an app feel haunted.
+   */
+  const [searchParams, setSearchParams] = useSearchParams();
+  const followParam = searchParams.get('follow');
+
+  useEffect(() => {
+    if (!followParam) {
+      return;
+    }
+    const wanted = parseInt(followParam, 10);
+    if (Number.isNaN(wanted)) {
+      return;
+    }
+    const items = Object.values(devices);
+    if (!items.length) {
+      return; // devices arrive over the websocket; try again when they do
+    }
+    const target = items.find((device) => {
+      const lead = (device.name || '').match(/^(\d+)\b/);
+      return lead && parseInt(lead[1], 10) === wanted;
+    });
+    if (target) {
+      if (!isFavourite(target.id)) {
+        toggleFavourite(target.id);
+      }
+      dispatch(devicesActions.selectId(target.id));
+      dispatch(followActions.toggle(target.id));
+      setDevicesOpen(false);
+    }
+    // Consumed either way. A number that matches nothing - a scratched entry,
+    // a typo - should not retry on every device update for the rest of the
+    // session, and the spectator still has a working map and list.
+    searchParams.delete('follow');
+    setSearchParams(searchParams, { replace: true });
+  }, [followParam, devices, isFavourite, toggleFavourite, dispatch, searchParams, setSearchParams]);
 
   useFilter(
     keyword,
