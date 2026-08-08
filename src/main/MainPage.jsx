@@ -67,6 +67,15 @@ const useStyles = makeStyles()((theme) => ({
     display: 'flex',
     flexDirection: 'column',
     minHeight: 0,
+    // On a phone the list and the map share one grid cell, and the list used to
+    // cover it completely. That removed any sense that a map was there at all,
+    // and left no way back to it short of finding the toggle in the bottom bar.
+    // Leaving a strip uncovered restores both: the map shows behind it, and
+    // tapping the strip closes the list.
+    [theme.breakpoints.down('md')]: {
+      width: theme.dimensions.deviceListWidthPhone,
+      justifySelf: 'start',
+    },
   },
   listWrapper: {
     flex: 1,
@@ -252,7 +261,14 @@ const MainPage = () => {
         </Paper>
         <div className={classes.middle}>
           {!desktop && (
-            <div className={classes.contentMap}>
+            /* Tapping the exposed strip closes the list. It is only reachable
+               while the list is open, because otherwise the Paper covers
+               everything except that strip - and with the list shut this is a
+               no-op, so a normal map tap costs nothing. */
+            <div
+              className={classes.contentMap}
+              onClick={() => devicesOpen && setDevicesOpen(false)}
+            >
               <Suspense fallback={null}>
                 <MainMap
                   filteredPositions={filteredPositions}
