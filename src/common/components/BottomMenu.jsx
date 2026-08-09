@@ -17,6 +17,7 @@ import MapIcon from '@mui/icons-material/Map';
 import PersonIcon from '@mui/icons-material/Person';
 import ExitToAppIcon from '@mui/icons-material/ExitToApp';
 import PlaceIcon from '@mui/icons-material/Place';
+import SupportAgentIcon from '@mui/icons-material/SupportAgent';
 
 import { sessionActions } from '../../store';
 import { useTranslation } from './LocalizationProvider';
@@ -24,6 +25,8 @@ import { useRestriction } from '../util/permissions';
 import { nativePostMessage } from './NativeInterface';
 import useWaypoints from '../util/waypoints';
 import WaypointsDialog from './WaypointsDialog';
+import useSupportWidget from '../util/useSupportWidget';
+import { useAttributePreference } from '../util/preferences';
 
 const BottomMenu = ({ routeFilter }) => {
   const navigate = useNavigate();
@@ -45,6 +48,26 @@ const BottomMenu = ({ routeFilter }) => {
   // itself until the data carries an event. An install that has never run a
   // race sees the bar it has always seen.
   const waypoints = useWaypoints(routeFilter);
+
+  // Roofus. The widget's own floating launcher is hidden by SupportWidget and
+  // driven from here instead, so it has one fixed home rather than a button
+  // that overlaps this bar on a phone and the map controls on a desktop.
+  //
+  // `ready` is false until the widget has actually mounted - it appears only
+  // after its own /config call resolves, and a rejected token or a disallowed
+  // origin means it never appears at all. Hiding the entry until then follows
+  // the same rule as POI above: shown only where there is something to show.
+  //
+  // The LABEL is an attribute because the assistant's name is per-event
+  // branding, exactly like class names being derived rather than hard-coded.
+  // Roofus is ROA's; the next event's will be something else, and neither
+  // should need a build.
+  const { ready: supportReady, toggle: toggleSupport } = useSupportWidget();
+  // No t() key here on purpose: the default is a placeholder for an unset
+  // attribute, not a translated string. Inventing an l10n key for a value that
+  // is meant to be overridden per event would render empty in every locale but
+  // English - LocalizationProvider has no fallback.
+  const supportLabel = useAttributePreference('eiWidgetLabel', 'Help');
 
   const currentSelection = () => {
     if (location.pathname === `/settings/user/${user.id}`) {
@@ -126,6 +149,9 @@ const BottomMenu = ({ routeFilter }) => {
       case 'poi':
         setWaypointsOpen(true);
         break;
+      case 'support':
+        toggleSupport();
+        break;
       case 'account':
         setAnchorEl(event.currentTarget);
         break;
@@ -159,6 +185,17 @@ const BottomMenu = ({ routeFilter }) => {
             label={t('sharedPoints') || 'POI'}
             icon={<PlaceIcon />}
             value="poi"
+          />
+        )}
+        {/*
+          Like POI, an action rather than a place: it toggles the chat panel and
+          never becomes the selected tab, so Map stays highlighted behind it.
+        */}
+        {supportReady && (
+          <BottomNavigationAction
+            label={supportLabel}
+            icon={<SupportAgentIcon />}
+            value="support"
           />
         )}
         {!disableReports && (

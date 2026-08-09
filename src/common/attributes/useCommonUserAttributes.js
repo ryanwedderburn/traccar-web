@@ -159,6 +159,40 @@ export default (t) =>
         name: t('attributeNavigationAppTitle'),
         type: 'string',
       },
+      // Ours. Declared HERE rather than in useUserAttributes or
+      // useServerAttributes because this file is the one both the Account page
+      // and the Server page pull in, and the widget is meant to be settable in
+      // both places: on your own account to test it live without spectators
+      // seeing it, then on the server to release it to everybody.
+      //
+      // Declared at all because the alternative is typing the key by hand into
+      // a freeSolo autocomplete, and a mistyped key here fails exactly the way
+      // a mistyped geofence attribute does - silently, with no error anywhere
+      // and no widget. Same reasoning as the raceRoute convention note in
+      // docs/CONTEXT.md, except this one is cheap to prevent.
+      //
+      // The `|| literal` fallbacks are the house pattern: a key added to
+      // en.json alone renders EMPTY in every other locale, because
+      // LocalizationProvider has no English fallback.
+      eiWidgetToken: {
+        name: t('attributeEiWidgetToken') || 'Support Widget: Token',
+        type: 'string',
+      },
+      eiWidgetUrl: {
+        name: t('attributeEiWidgetUrl') || 'Support Widget: Script URL',
+        type: 'string',
+      },
+      eiWidgetCss: {
+        name: t('attributeEiWidgetCss') || 'Support Widget: CSS',
+        type: 'string',
+      },
+      // The bottom-bar label. An attribute because the assistant's name is
+      // per-event branding - Roofus is ROA's - and the next event should not
+      // need a build to be called something else.
+      eiWidgetLabel: {
+        name: t('attributeEiWidgetLabel') || 'Support Widget: Label',
+        type: 'string',
+      },
     }),
     [t],
   );

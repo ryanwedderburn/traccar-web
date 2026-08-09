@@ -1,5 +1,6 @@
 import { useEffect } from 'react';
 import { useAttributePreference } from '../util/preferences';
+import { LAUNCHER_SELECTOR } from '../util/useSupportWidget';
 
 /**
  * Loads the event-intelligence web widget - "Roofus" - into the tracking app.
@@ -62,26 +63,38 @@ const SupportWidget = () => {
   }, [token, url]);
 
   /**
-   * An escape hatch for placement, and it earns its keep.
+   * Placement.
    *
-   * Bottom-right is the busiest corner of this app: maplibre's attribution
-   * control sits there, the phone bottom bar is 56px of Map/POI/Logout, and the
-   * StatusCard opens across the bottom whenever a rider is selected. The
-   * launcher will need an offset, and the selector to hang it on cannot be
-   * known until the widget has rendered on a real screen.
+   * The widget's own launcher is hidden, because it lands squarely on the phone
+   * bottom bar and competes with maplibre's controls and the attribution for
+   * the busiest corner in the app. `BottomMenu` drives it instead - see
+   * util/useSupportWidget.js - which gives it one fixed home rather than a
+   * floating button that overlaps something different on every screen size.
    *
-   * Shipping a guessed selector would be worse than shipping none. So the
-   * offset is an attribute: look at it on the handset, write the rule, paste it
-   * into Server attributes. Nudging a button during race week should not
-   * require a deploy.
+   * With the launcher gone the panel still anchors to its container, which
+   * widget.js pins at `bottom: 20px` - behind the 56px bottom bar on a phone.
+   * Lifting it clear is the second rule.
+   *
+   * `:has()` rather than JavaScript because the widget mounts asynchronously,
+   * after its /config fetch: CSS applies whenever the element appears and needs
+   * no timing, no observer and no retry. The container carries neither id nor
+   * class, so its child is the only handle on it.
+   *
+   * The `md` breakpoint is hard-coded at 900px rather than read from the theme
+   * - this is a plain stylesheet, not a styled component, and MUI's default
+   * `md` is 900. It only needs to agree with `theme.breakpoints`, which decides
+   * where BottomMenu moves into the desktop sidebar.
    */
   useEffect(() => {
-    if (!css) {
-      return () => {};
-    }
     const style = document.createElement('style');
     style.id = STYLE_ID;
-    style.textContent = css;
+    style.textContent = `
+      ${LAUNCHER_SELECTOR} { display: none !important; }
+      @media (max-width: 899.95px) {
+        body > div:has(> ${LAUNCHER_SELECTOR}) { bottom: 76px !important; }
+      }
+      ${css || ''}
+    `;
     document.head.appendChild(style);
     return () => style.remove();
   }, [css]);
