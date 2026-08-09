@@ -42,14 +42,37 @@ export default () => {
   // avoided.
   const [ready, setReady] = useState(false);
 
+  // The assistant's own avatar, lifted off the launcher we are already
+  // watching. Roofus is the recognisable thing about this channel and a generic
+  // headset icon throws that away.
+  //
+  // Read as a STRING, once, and never held as a node: `setOpen(true)` replaces
+  // the launcher's innerHTML with a × and `applyLogo()` rebuilds the image on
+  // close, so any reference to the element itself would be detached the first
+  // time anyone opened the panel.
+  //
+  // Taken from the DOM rather than by calling /api/widget/{token}/config
+  // ourselves: it is the same coupling we already have for the click, it costs
+  // no second request, and it cannot disagree with what the widget is showing.
+  // Absent when the edition has no logo configured - widget.js falls back to a
+  // speech-balloon glyph, and so do we, to a MUI icon.
+  const [logo, setLogo] = useState(null);
+
   useEffect(() => {
-    if (document.querySelector(LAUNCHER_SELECTOR)) {
+    const found = (launcher) => {
+      setLogo(launcher.querySelector('img')?.src || null);
       setReady(true);
+    };
+
+    const existing = document.querySelector(LAUNCHER_SELECTOR);
+    if (existing) {
+      found(existing);
       return () => {};
     }
     const observer = new MutationObserver(() => {
-      if (document.querySelector(LAUNCHER_SELECTOR)) {
-        setReady(true);
+      const launcher = document.querySelector(LAUNCHER_SELECTOR);
+      if (launcher) {
+        found(launcher);
         observer.disconnect();
       }
     });
@@ -67,5 +90,5 @@ export default () => {
     document.querySelector(LAUNCHER_SELECTOR)?.click();
   }, []);
 
-  return { ready, toggle };
+  return { ready, logo, toggle };
 };

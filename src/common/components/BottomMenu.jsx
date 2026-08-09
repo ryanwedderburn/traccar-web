@@ -62,7 +62,7 @@ const BottomMenu = ({ routeFilter }) => {
   // branding, exactly like class names being derived rather than hard-coded.
   // Roofus is ROA's; the next event's will be something else, and neither
   // should need a build.
-  const { ready: supportReady, toggle: toggleSupport } = useSupportWidget();
+  const { ready: supportReady, logo: supportLogo, toggle: toggleSupport } = useSupportWidget();
   // No t() key here on purpose: the default is a placeholder for an unset
   // attribute, not a translated string. Inventing an l10n key for a value that
   // is meant to be overridden per event would render empty in every locale but
@@ -194,7 +194,26 @@ const BottomMenu = ({ routeFilter }) => {
         {supportReady && (
           <BottomNavigationAction
             label={supportLabel}
-            icon={<SupportAgentIcon />}
+            icon={
+              supportLogo ? (
+                <img
+                  src={supportLogo}
+                  alt=""
+                  /* 24px to match the MUI icons either side of it, and round
+                     because the launcher it came from is a circle - a square
+                     crop here would read as a different mark. */
+                  style={{
+                    width: 24,
+                    height: 24,
+                    borderRadius: '50%',
+                    objectFit: 'cover',
+                    display: 'block',
+                  }}
+                />
+              ) : (
+                <SupportAgentIcon />
+              )
+            }
             value="support"
           />
         )}
