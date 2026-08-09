@@ -49,6 +49,16 @@ const compareDays = (a, b) => {
   return a.localeCompare(b);
 };
 
+/**
+ * A place rather than a path.
+ *
+ * Traccar draws a route as a LINESTRING or POLYGON and a fixed point as a
+ * circle with a proximity radius, so the geometry alone tells them apart and
+ * no list of types needs maintaining as new ones appear. Same discriminator
+ * the POI list uses - see common/util/waypoints.js, and keep the two in step.
+ */
+export const isPlace = (geofence) => String(geofence?.area || '').indexOf('CIRCLE') >= 0;
+
 export const matchesRouteFilter = (geofence, filter) => {
   if (!filter?.event) {
     return true;
@@ -61,6 +71,21 @@ export const matchesRouteFilter = (geofence, filter) => {
   // watching wants an August test lap drawn over a November race.
   if (geofence.attributes?.type === 'training') {
     return false;
+  }
+
+  // Day and class filter ROUTES. A fixed point is where it is regardless of
+  // which day or class is selected, so a place survives every combination once
+  // its event matches.
+  //
+  // This is the same rule the POI list already applies (see waypoints.js), and
+  // it has to be, or the two disagree: Music Box tagged with a class would be
+  // listed under POI and offer directions while being absent from the map that
+  // is supposed to show you where it is. The reasoning is also the same -
+  // a spectator following Bronze who learns Gold alone crosses at Free Fall
+  // Pass may well go and watch anyway, and nobody can act on the point they
+  // were never shown.
+  if (isPlace(geofence)) {
+    return true;
   }
 
   // A geofence carrying no classes is not class-specific - a DSP serves

@@ -5,6 +5,7 @@ import { useDispatch, useSelector } from 'react-redux';
 import MapView from '../map/core/MapView';
 import MapSelectedDevice from '../map/main/MapSelectedDevice';
 import MapFollow from '../map/main/MapFollow';
+import MapRouteCamera from '../map/main/MapRouteCamera';
 import MapAccuracy from '../map/main/MapAccuracy';
 import MapGeofence from '../map/MapGeofence';
 import MapCurrentLocation from '../map/MapCurrentLocation';
@@ -18,6 +19,7 @@ import MapOverlay from '../map/overlay/MapOverlay';
 import MapGeocoder from '../map/control/MapGeocoder';
 import MapScale from '../map/MapScale';
 import MapRuler from '../map/control/MapRuler';
+import MapLocateFollowed from '../map/control/MapLocateFollowed';
 import MapNotification from '../map/control/MapNotification';
 import useFeatures from '../common/util/useFeatures';
 
@@ -57,8 +59,12 @@ const MainMap = ({ filteredPositions, selectedPosition, onEventsClick, routeFilt
         <MapDefaultCamera filteredPositions={filteredPositions} />
         <MapSelectedDevice />
         <MapFollow />
+        {/* After MapDefaultCamera, which owns the opening frame. */}
+        <MapRouteCamera filter={routeFilter} />
         <PoiMap />
         <MapRuler positions={filteredPositions} onActiveChange={setRulerActive} />
+        {/* Only present while a rider is being watched - see the component. */}
+        <MapLocateFollowed />
         {!features.disableEvents && (
           <MapNotification enabled={eventsAvailable} onClick={onEventsClick} />
         )}

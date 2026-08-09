@@ -61,6 +61,21 @@ const useStyles = makeStyles()((theme) => ({
     pointerEvents: 'auto',
     gridArea: '1 / 1',
   },
+  // The strip of map left uncovered by the list is a target you tap to get the
+  // map back - and the maplibre control stack sits in exactly that strip, hard
+  // against the right edge. Zoom, compass, layers, geolocate, search and ruler
+  // are all in the way of the one gesture the strip exists for, and hitting one
+  // by accident leaves a spectator somewhere they did not ask to be with the
+  // list still open on top.
+  //
+  // Hidden rather than covered: the controls belong to the map, so they come
+  // back the moment the map does. Bottom-left scale and bottom-right
+  // attribution are left alone - neither navigates anywhere.
+  mapControlsHidden: {
+    '& .maplibregl-ctrl-top-right, & .maplibregl-ctrl-top-left': {
+      display: 'none',
+    },
+  },
   contentList: {
     pointerEvents: 'auto',
     gridArea: '1 / 1',
@@ -330,7 +345,7 @@ const MainPage = () => {
                everything except that strip - and with the list shut this is a
                no-op, so a normal map tap costs nothing. */
             <div
-              className={classes.contentMap}
+              className={`${classes.contentMap}${devicesOpen ? ` ${classes.mapControlsHidden}` : ''}`}
               onClick={() => devicesOpen && setDevicesOpen(false)}
             >
               <Suspense fallback={null}>

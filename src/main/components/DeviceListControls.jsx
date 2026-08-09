@@ -41,6 +41,11 @@ const useStyles = makeStyles()((theme) => ({
     flex: 1,
     minWidth: 0,
   },
+  // The selected tab carries the account's brand colour, matching the class
+  // toggles above it. MUI's default selected state is a grey wash a shade off
+  // the unselected one, which on a phone in daylight is not a state change at
+  // all - and which set you are looking at is the thing a spectator most needs
+  // to be able to read at a glance.
   button: {
     flex: 1,
     gap: theme.spacing(0.5),
@@ -48,6 +53,13 @@ const useStyles = makeStyles()((theme) => ({
     padding: theme.spacing(0.5, 1),
     textTransform: 'none',
     whiteSpace: 'nowrap',
+    '&.Mui-selected': {
+      backgroundColor: theme.palette.primary.main,
+      color: theme.palette.primary.contrastText,
+      '&:hover': {
+        backgroundColor: theme.palette.primary.dark,
+      },
+    },
   },
   mapFilter: {
     flexShrink: 0,
