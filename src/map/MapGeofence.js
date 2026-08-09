@@ -85,7 +85,20 @@ const MapGeofence = ({ filter }) => {
         features: Object.values(geofences)
           .filter((geofence) => !geofence.attributes.hide)
           .filter((geofence) => matchesRouteFilter(geofence, filter))
-          .map((geofence) => geofenceToFeature(theme, geofence)),
+          .map((geofence) => geofenceToFeature(theme, geofence))
+          // WIDEST FIRST, so the thinnest line ends up on top.
+          //
+          // maplibre draws features in source order within a layer, and the
+          // class widths only mean anything if that order is controlled: a
+          // 2px Gold route under a 6px Bronze one is not thin, it is absent.
+          // Until this, the order was whatever `Object.values` gave - creation
+          // order - so whether two classes sharing a section were both visible
+          // depended on which was imported first.
+          //
+          // Sorting here rather than at import means it also fixes data that
+          // is already in the database, and cannot be undone by the next
+          // import.
+          .sort((a, b) => (b.properties.width || 0) - (a.properties.width || 0)),
       });
     }
   }, [mapGeofences, geofences, id, theme, filter]);
