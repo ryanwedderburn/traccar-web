@@ -113,6 +113,12 @@ export default (filter) => {
   return useMemo(
     () =>
       Object.values(geofences)
+        // Honour `attributes.hide`, as MapGeofence does. Without this a hidden
+        // waypoint vanished from the map and stayed in this list, offering
+        // directions to a place the map said was not there - the same map-and-
+        // list disagreement the day/class filter had, in a different costume.
+        // Found when /manage.html gained a switch for it, 2026-08-09.
+        .filter((item) => !item.attributes?.hide)
         .filter((item) => !event || item.attributes?.event === event)
         .filter((item) => !ROUTE_TYPES.has(item.attributes?.type))
         .map((item) => ({

@@ -60,7 +60,12 @@ export default () => {
 
   useEffect(() => {
     const found = (launcher) => {
-      setLogo(launcher.querySelector('img')?.src || null);
+      // Prefer the API. `window.eiWidget.logo()` was added on the EI side on
+      // 2026-08-09 for exactly this, so a host rendering its own launcher does
+      // not have to read the avatar back out of the widget's DOM. The scrape
+      // stays as the fallback: an embed served by an older build has no API,
+      // and this must not go blank on one.
+      setLogo(window.eiWidget?.logo?.() || launcher.querySelector('img')?.src || null);
       setReady(true);
     };
 
