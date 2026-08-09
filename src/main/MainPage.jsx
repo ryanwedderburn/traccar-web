@@ -18,6 +18,7 @@ import RouteFilter from './components/RouteFilter';
 import { useAttributePreference } from '../common/util/preferences';
 import useFavourites from '../common/util/useFavourites';
 import useKiosk from '../common/util/useKiosk';
+import SupportWidget from '../common/components/SupportWidget';
 import useRouteFilter from '../common/util/useRouteFilter';
 
 const MainMap = lazy(() => import('./MainMap'));
@@ -379,6 +380,13 @@ const MainPage = () => {
           </div>
         )}
       </div>
+      {/*
+        Mounted here rather than in App.jsx. A spectator account is readonly
+        with reports disabled, so the bottom bar is Map, POI and Logout - they
+        never leave this page, and this keeps the fork's edit surface off
+        App.jsx, which kiosk mode deliberately left alone.
+      */}
+      <SupportWidget />
       <EventsDrawer open={eventsOpen} onClose={() => setEventsOpen(false)} />
       {selectedDeviceId && (
         <StatusCard
