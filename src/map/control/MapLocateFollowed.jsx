@@ -7,6 +7,7 @@ import { useDispatch, useSelector } from 'react-redux';
 import ZoomOutMapIcon from '@mui/icons-material/ZoomOutMap';
 import { map } from '../core/MapView';
 import { toMapCoordinates } from '../core/mapUtil';
+import { enableUserLocation } from '../MapCurrentLocation';
 import { followActions } from '../../store';
 
 /**
@@ -64,6 +65,13 @@ const MapLocateFollowed = () => {
     }
     navigator.geolocation?.getCurrentPosition(
       ({ coords }) => {
+        // THE DISCOVERABILITY PATH. Granting location through this button - which
+        // appears only when it is relevant and says what it does - is far more
+        // likely than finding the unlabelled crosshair in a stack of six map
+        // controls. So a grant here also turns the dot on and remembers it, and
+        // every later visit starts with the dot up.
+        enableUserLocation();
+
         // Following would undo this within seconds: MapFollow re-centres on the
         // rider's next report, and a moving rider reports constantly. So the
         // camera has one owner at a time, which is the same rule that makes
