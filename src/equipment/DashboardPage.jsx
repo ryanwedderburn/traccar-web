@@ -128,7 +128,8 @@ const DashboardPage = () => {
   const groups = useSelector((state) => state.groups.items);
 
   const [engineHours, setEngineHours] = useState(null);
-  const [alertCount, setAlertCount] = useState(null);
+  const [alerts, setAlerts] = useState(null);
+  const [alertsOpen, setAlertsOpen] = useState(false);
   const [maintenances, setMaintenances] = useState([]);
 
   useEffect(() => {
@@ -166,9 +167,11 @@ const DashboardPage = () => {
         );
         const events = await eventsResponse.json();
         const alertTypes = ['deviceFuelDrop', 'maintenance', 'geofenceExit', 'alarm', 'deviceOverspeed'];
-        setAlertCount(events.filter((event) => alertTypes.includes(event.type)).length);
+        setAlerts(events
+          .filter((event) => alertTypes.includes(event.type))
+          .sort((a, b) => b.eventTime.localeCompare(a.eventTime)));
       } catch {
-        setAlertCount(null);
+        setAlerts(null);
       }
       try {
         const maintenanceResponse = await fetchOrThrow('/api/maintenance');
@@ -231,11 +234,21 @@ const DashboardPage = () => {
       color: theme.palette.text.primary,
     },
     {
-      value: alertCount != null ? String(alertCount) : '—',
+      value: alerts != null ? String(alerts.length) : '—',
       caption: 'alerts today',
-      color: alertCount ? theme.palette.error.main : theme.palette.text.primary,
+      color: alerts?.length ? theme.palette.error.main : theme.palette.text.primary,
+      onClick: alerts?.length ? () => setAlertsOpen((open) => !open) : null,
     },
   ];
+
+  const alertLabel = (event) => ({
+    deviceFuelDrop: 'Fuel drop',
+    maintenance: 'Service due',
+    geofenceExit: 'Left site',
+    geofenceEnter: 'Entered site',
+    alarm: `Alarm${event.attributes?.alarm ? ` · ${event.attributes.alarm}` : ''}`,
+    deviceOverspeed: 'Overspeed',
+  })[event.type] || event.type;
 
   return (
     <div className={classes.root}>
@@ -255,16 +268,55 @@ const DashboardPage = () => {
       <div className={classes.content}>
         <div className={classes.kpis}>
           {kpis.map((kpi) => (
-            <Paper key={kpi.caption} className={classes.kpi}>
+            <Paper
+              key={kpi.caption}
+              className={classes.kpi}
+              onClick={kpi.onClick || undefined}
+              style={kpi.onClick ? { cursor: 'pointer' } : undefined}
+            >
               <Typography variant="h5" fontWeight={600} style={{ color: kpi.color }}>
                 {kpi.value}
               </Typography>
               <Typography variant="caption" color="textSecondary">
                 {kpi.caption}
+                {kpi.onClick ? (alertsOpen ? ' ▾' : ' ▸') : ''}
               </Typography>
             </Paper>
           ))}
         </div>
+        {alertsOpen && alerts?.length > 0 && (
+          <>
+            <Typography variant="overline" className={classes.section} component="div">
+              Alerts today
+            </Typography>
+            {alerts.map((event) => (
+              <Paper
+                key={event.id}
+                className={classes.machine}
+                onClick={() => handleRowClick(event.deviceId)}
+                style={{ cursor: 'pointer' }}
+              >
+                <span
+                  className={classes.dot}
+                  style={{ backgroundColor: theme.palette.error.main }}
+                />
+                <div className={classes.machineText}>
+                  <Typography variant="body2" fontWeight={600} noWrap>
+                    {alertLabel(event)}
+                  </Typography>
+                  <Typography variant="caption" color="textSecondary" noWrap component="div">
+                    {devices[event.deviceId]?.name || `Device ${event.deviceId}`}
+                  </Typography>
+                </div>
+                <div className={classes.machineRight}>
+                  <Typography variant="caption" color="textSecondary">
+                    {dayjs(event.eventTime).format('HH:mm')}
+                  </Typography>
+                </div>
+              </Paper>
+            ))}
+          </>
+        )}
         <Typography variant="overline" className={classes.section} component="div">
           Machines
           {alertRow ? ' · attention needed' : ''}
