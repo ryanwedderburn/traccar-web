@@ -1,0 +1,305 @@
+import { useEffect, useMemo, useState } from 'react';
+import { useDispatch, useSelector } from 'react-redux';
+import { useNavigate } from 'react-router-dom';
+import {
+  AppBar, Toolbar, IconButton, Typography, Paper,
+} from '@mui/material';
+import { useTheme } from '@mui/material/styles';
+import { makeStyles } from 'tss-react/mui';
+import ArrowBackIcon from '@mui/icons-material/ArrowBack';
+import dayjs from 'dayjs';
+import useEquipmentUi from '../common/util/useEquipmentUi';
+import fetchOrThrow from '../common/util/fetchOrThrow';
+import { devicesActions } from '../store';
+
+/**
+ * The fleet dashboard - Phase 2's centrepiece, spec'd by slide 3 of the
+ * pitch deck (docs/collateral/heavy-equipment/pitch_deck.js): KPI tiles,
+ * machine list with live status, service-due figures. Client-only: every
+ * number here is derived from APIs the server already serves.
+ *
+ * Live for free, same as the gauge card: SocketController mounts at the App
+ * layout level, so the positions slice keeps updating on this route and the
+ * status column moves without a timer. Only the two report fetches (fuel
+ * burned, alerts) poll, once a minute.
+ *
+ * Deliberately NO embedded map, though the deck mock shows one: `map` is a
+ * module-level singleton (map/core/MapView.jsx) and a second instance is a
+ * fight with the main page. The Map tab is one tap away.
+ *
+ * Labels are literal English rather than l10n keys, the SupportWidget
+ * rationale: this is per-vertical chrome, and inventing keys that render
+ * empty in every other locale is worse than the English until a real
+ * translation need appears.
+ */
+
+const useStyles = makeStyles()((theme) => ({
+  root: {
+    height: '100%',
+    display: 'flex',
+    flexDirection: 'column',
+    backgroundColor: theme.palette.background.default,
+  },
+  content: {
+    flex: 1,
+    overflowY: 'auto',
+    padding: theme.spacing(2),
+    maxWidth: 800,
+    width: '100%',
+    margin: '0 auto',
+  },
+  kpis: {
+    display: 'grid',
+    gridTemplateColumns: 'repeat(auto-fit, minmax(140px, 1fr))',
+    gap: theme.spacing(1.5),
+    marginBottom: theme.spacing(2),
+  },
+  kpi: {
+    padding: theme.spacing(1.5),
+  },
+  section: {
+    color: theme.palette.text.secondary,
+    letterSpacing: 2,
+    margin: theme.spacing(1, 0),
+  },
+  machine: {
+    display: 'flex',
+    alignItems: 'center',
+    gap: theme.spacing(1.5),
+    padding: theme.spacing(1.5),
+    marginBottom: theme.spacing(1),
+  },
+  dot: {
+    width: 12,
+    height: 12,
+    borderRadius: '50%',
+    flexShrink: 0,
+  },
+  machineText: {
+    flex: 1,
+    minWidth: 0,
+  },
+  machineRight: {
+    textAlign: 'right',
+    flexShrink: 0,
+  },
+}));
+
+const HOUR = 3600000;
+
+/**
+ * rank orders the machine list EXCEPTIONS FIRST - the industry's
+ * "exception-based view": what needs a decision sits on top, healthy
+ * machines below, offline at the bottom. Sorting by name would make the
+ * manager do the prioritising that the dashboard exists to do.
+ */
+const machineState = (device, position, theme) => {
+  if (device.status !== 'online') {
+    return { label: 'Offline', color: theme.palette.action.disabled, rank: 4 };
+  }
+  const a = position?.attributes || {};
+  if (a.motion && !a.ignition) {
+    return { label: 'Moving · no ignition', color: theme.palette.error.main, rank: 0 };
+  }
+  if (a.ignition && (a.rpm > 0 || a.motion)) {
+    return { label: 'Working', color: theme.palette.success.main, rank: 2 };
+  }
+  if (a.ignition) {
+    return { label: 'Idling', color: theme.palette.warning.main, rank: 1 };
+  }
+  return { label: 'Static · OK', color: theme.palette.text.secondary, rank: 3 };
+};
+
+const DashboardPage = () => {
+  const { classes } = useStyles();
+  const theme = useTheme();
+  const navigate = useNavigate();
+  const dispatch = useDispatch();
+  const equipmentUi = useEquipmentUi();
+
+  // Drill-down in two taps: row -> that machine selected on the map.
+  const handleRowClick = (deviceId) => {
+    dispatch(devicesActions.selectId(deviceId));
+    navigate('/');
+  };
+
+  const devices = useSelector((state) => state.devices.items);
+  const positions = useSelector((state) => state.session.positions);
+  const groups = useSelector((state) => state.groups.items);
+
+  const [fuelBurned, setFuelBurned] = useState(null);
+  const [alertCount, setAlertCount] = useState(null);
+  const [maintenances, setMaintenances] = useState([]);
+
+  useEffect(() => {
+    if (!equipmentUi) {
+      navigate('/');
+    }
+  }, [equipmentUi, navigate]);
+
+  useEffect(() => {
+    const load = async () => {
+      const deviceIds = Object.keys(devices);
+      if (!deviceIds.length) {
+        return;
+      }
+      const query = new URLSearchParams();
+      deviceIds.forEach((id) => query.append('deviceId', id));
+      query.append('from', dayjs().startOf('day').toISOString());
+      query.append('to', dayjs().toISOString());
+      try {
+        const summaryResponse = await fetchOrThrow(
+          `/api/reports/summary?${query.toString()}`,
+          { headers: { Accept: 'application/json' } },
+        );
+        const summary = await summaryResponse.json();
+        setFuelBurned(summary.reduce((sum, item) => sum + (item.spentFuel || 0), 0));
+      } catch {
+        setFuelBurned(null);
+      }
+      try {
+        const eventsResponse = await fetchOrThrow(
+          `/api/reports/events?${query.toString()}`,
+          { headers: { Accept: 'application/json' } },
+        );
+        const events = await eventsResponse.json();
+        const alertTypes = ['deviceFuelDrop', 'maintenance', 'geofenceExit', 'alarm', 'deviceOverspeed'];
+        setAlertCount(events.filter((event) => alertTypes.includes(event.type)).length);
+      } catch {
+        setAlertCount(null);
+      }
+      try {
+        const maintenanceResponse = await fetchOrThrow('/api/maintenance');
+        setMaintenances((await maintenanceResponse.json()).filter((item) => item.type === 'hours'));
+      } catch {
+        setMaintenances([]);
+      }
+    };
+    load();
+    const timer = setInterval(load, 60000);
+    return () => clearInterval(timer);
+  }, [devices]);
+
+  const rows = useMemo(() => Object.values(devices).map((device) => {
+    const position = positions[device.id];
+    const state = machineState(device, position, theme);
+    const attributes = position?.attributes || {};
+
+    let service = null;
+    if (attributes.hours && maintenances.length) {
+      const remaining = Math.min(...maintenances.map((m) => {
+        const period = m.period || Infinity;
+        const next = m.start + (Math.floor((attributes.hours - m.start) / period) + 1) * period;
+        return next - attributes.hours;
+      }));
+      if (Number.isFinite(remaining)) {
+        service = Math.round(remaining / HOUR);
+      }
+    }
+
+    return {
+      device,
+      group: groups[device.groupId]?.name,
+      state,
+      fuel: attributes.fuel,
+      hours: attributes.hours,
+      service,
+    };
+  }).sort((a, b) => a.state.rank - b.state.rank
+    || a.device.name.localeCompare(b.device.name)), [devices, positions, groups, maintenances, theme]);
+
+  const online = rows.filter((row) => row.device.status === 'online').length;
+  const working = rows.filter((row) => row.state.label === 'Working').length;
+  const alertRow = rows.some((row) => row.state.label.startsWith('Moving'));
+
+  const kpis = [
+    {
+      value: `${online} / ${rows.length}`,
+      caption: 'machines online',
+      color: online === rows.length ? theme.palette.success.main : theme.palette.warning.main,
+    },
+    {
+      value: online ? `${Math.round((working / online) * 100)}%` : '—',
+      caption: 'working now',
+      color: theme.palette.success.main,
+    },
+    {
+      value: fuelBurned != null ? `${Math.round(fuelBurned)} L` : '—',
+      caption: 'fuel burned today',
+      color: theme.palette.text.primary,
+    },
+    {
+      value: alertCount != null ? String(alertCount) : '—',
+      caption: 'alerts today',
+      color: alertCount ? theme.palette.error.main : theme.palette.text.primary,
+    },
+  ];
+
+  return (
+    <div className={classes.root}>
+      <AppBar position="static" color="inherit" elevation={1}>
+        <Toolbar variant="dense">
+          <IconButton edge="start" onClick={() => navigate('/')}>
+            <ArrowBackIcon />
+          </IconButton>
+          <Typography variant="h6" style={{ flex: 1 }}>
+            Fleet overview
+          </Typography>
+          <Typography variant="body2" color="textSecondary">
+            {dayjs().format('ddd D MMM · HH:mm')}
+          </Typography>
+        </Toolbar>
+      </AppBar>
+      <div className={classes.content}>
+        <div className={classes.kpis}>
+          {kpis.map((kpi) => (
+            <Paper key={kpi.caption} className={classes.kpi}>
+              <Typography variant="h5" fontWeight={600} style={{ color: kpi.color }}>
+                {kpi.value}
+              </Typography>
+              <Typography variant="caption" color="textSecondary">
+                {kpi.caption}
+              </Typography>
+            </Paper>
+          ))}
+        </div>
+        <Typography variant="overline" className={classes.section} component="div">
+          Machines
+          {alertRow ? ' · attention needed' : ''}
+        </Typography>
+        {rows.map(({ device, group, state, fuel, hours, service }) => (
+          <Paper
+            key={device.id}
+            className={classes.machine}
+            onClick={() => handleRowClick(device.id)}
+            style={{ cursor: 'pointer' }}
+          >
+            <span className={classes.dot} style={{ backgroundColor: state.color }} />
+            <div className={classes.machineText}>
+              <Typography variant="body2" fontWeight={600} noWrap>
+                {device.name}
+              </Typography>
+              <Typography variant="caption" color="textSecondary" noWrap component="div">
+                {[device.model, group].filter(Boolean).join(' · ')}
+              </Typography>
+            </div>
+            <div className={classes.machineRight}>
+              <Typography variant="body2" style={{ color: state.color }}>
+                {state.label}
+              </Typography>
+              <Typography variant="caption" color="textSecondary" component="div">
+                {[
+                  fuel != null ? `Fuel ${Math.round(fuel)}%` : null,
+                  hours != null ? `${Math.round(hours / HOUR)} h` : null,
+                  service != null ? `Service in ${service} h` : null,
+                ].filter(Boolean).join(' · ')}
+              </Typography>
+            </div>
+          </Paper>
+        ))}
+      </div>
+    </div>
+  );
+};
+
+export default DashboardPage;

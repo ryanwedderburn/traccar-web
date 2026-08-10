@@ -14,6 +14,7 @@ import {
 import DescriptionIcon from '@mui/icons-material/Description';
 import SettingsIcon from '@mui/icons-material/Settings';
 import MapIcon from '@mui/icons-material/Map';
+import SpaceDashboardIcon from '@mui/icons-material/SpaceDashboard';
 import PersonIcon from '@mui/icons-material/Person';
 import ExitToAppIcon from '@mui/icons-material/ExitToApp';
 import PlaceIcon from '@mui/icons-material/Place';
@@ -25,6 +26,7 @@ import { useRestriction } from '../util/permissions';
 import { nativePostMessage } from './NativeInterface';
 import useWaypoints from '../util/waypoints';
 import useEventUi from '../util/useEventUi';
+import useEquipmentUi from '../util/useEquipmentUi';
 import WaypointsDialog from './WaypointsDialog';
 import useSupportWidget from '../util/useSupportWidget';
 import { useAttributePreference } from '../util/preferences';
@@ -53,6 +55,7 @@ const BottomMenu = ({ routeFilter }) => {
   // waypoint through their permissions, and self-hiding alone would put the
   // POI button back on a bar that is meant to be upstream's.
   const eventUi = useEventUi();
+  const equipmentUi = useEquipmentUi();
   const waypoints = useWaypoints(routeFilter);
 
   // Roofus. The widget's own floating launcher is hidden by SupportWidget and
@@ -84,6 +87,9 @@ const BottomMenu = ({ routeFilter }) => {
     }
     if (location.pathname.startsWith('/reports')) {
       return 'reports';
+    }
+    if (location.pathname === '/dashboard') {
+      return 'dashboard';
     }
     if (location.pathname === '/') {
       return 'map';
@@ -133,6 +139,9 @@ const BottomMenu = ({ routeFilter }) => {
       case 'map':
         navigate('/');
         break;
+      case 'dashboard':
+        navigate('/dashboard');
+        break;
       case 'reports': {
         let id = selectedDeviceId;
         if (id == null) {
@@ -181,6 +190,18 @@ const BottomMenu = ({ routeFilter }) => {
           }
           value="map"
         />
+        {/*
+          The equipment vertical's fleet overview. Label is literal English by
+          the SupportWidget rationale: per-vertical chrome, no l10n key that
+          would render empty in every other locale.
+        */}
+        {equipmentUi && (
+          <BottomNavigationAction
+            label="Fleet"
+            icon={<SpaceDashboardIcon />}
+            value="dashboard"
+          />
+        )}
         {/*
           Opens a dialog rather than navigating, so `currentSelection()` never
           returns 'poi' and the Map tab stays highlighted behind it. That is
