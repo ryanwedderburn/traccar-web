@@ -24,6 +24,7 @@ import { useTranslation } from './LocalizationProvider';
 import { useRestriction } from '../util/permissions';
 import { nativePostMessage } from './NativeInterface';
 import useWaypoints from '../util/waypoints';
+import useEventUi from '../util/useEventUi';
 import WaypointsDialog from './WaypointsDialog';
 import useSupportWidget from '../util/useSupportWidget';
 import { useAttributePreference } from '../util/preferences';
@@ -47,6 +48,11 @@ const BottomMenu = ({ routeFilter }) => {
   // Shown only where there is somewhere to go, the same way RouteFilter hides
   // itself until the data carries an event. An install that has never run a
   // race sees the bar it has always seen.
+  //
+  // Also gated per host: an admin on the stock platform can see every event
+  // waypoint through their permissions, and self-hiding alone would put the
+  // POI button back on a bar that is meant to be upstream's.
+  const eventUi = useEventUi();
   const waypoints = useWaypoints(routeFilter);
 
   // Roofus. The widget's own floating launcher is hidden by SupportWidget and
@@ -180,7 +186,7 @@ const BottomMenu = ({ routeFilter }) => {
           returns 'poi' and the Map tab stays highlighted behind it. That is
           deliberate: this is an action, not a place.
         */}
-        {waypoints.length > 0 && (
+        {eventUi && waypoints.length > 0 && (
           <BottomNavigationAction
             label={t('sharedPoints') || 'POI'}
             icon={<PlaceIcon />}

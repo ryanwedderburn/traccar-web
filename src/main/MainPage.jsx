@@ -17,6 +17,7 @@ import DeviceListControls from './components/DeviceListControls';
 import RouteFilter from './components/RouteFilter';
 import { useAttributePreference } from '../common/util/preferences';
 import useFavourites from '../common/util/useFavourites';
+import useEventUi from '../common/util/useEventUi';
 import useKiosk from '../common/util/useKiosk';
 import SupportWidget from '../common/components/SupportWidget';
 import useRouteFilter from '../common/util/useRouteFilter';
@@ -129,6 +130,13 @@ const MainPage = () => {
   const [filterSort, setFilterSort] = usePersistedState('filterSort', '');
   const [filterMap, setFilterMap] = usePersistedState('filterMap', false);
 
+  // The per-host gate for everything event-shaped below. When it is off the
+  // favourites machinery still runs - hooks cannot be conditional - but every
+  // DERIVED value is forced to its stock answer, so a localStorage left over
+  // from when this origin carried the event UI cannot silently filter a map
+  // that no longer shows any control to unfilter it with.
+  const eventUi = useEventUi();
+
   const { favourites, stored: storedFavourites, isFavourite, toggleFavourite } = useFavourites();
   // Kiosk prefers Favourites; everyone else prefers All. It is a preference
   // rather than a landing state - with nothing starred yet, effectiveMode
@@ -152,7 +160,7 @@ const MainPage = () => {
   //
   // Derived rather than written back, so unstarring everything and starring
   // again returns you to the tab you chose.
-  const effectiveMode = favourites.length ? listMode : 'all';
+  const effectiveMode = eventUi && favourites.length ? listMode : 'all';
   const showFavourites = effectiveMode === 'favourites';
   // Favourites filters the map as well as the list. Filtering only the list is
   // half a feature with hundreds of devices - you get a clean list and a wall
@@ -164,6 +172,7 @@ const MainPage = () => {
   // straight back the moment a spectator taps All to search for a rider. The
   // funnel still turns it off for anyone who wants the whole field.
   const [mapFavouritesOnly, setMapFavouritesOnly] = usePersistedState('mapFavouritesOnly', kiosk);
+  const effectiveMapFavouritesOnly = eventUi && mapFavouritesOnly;
   // Which event's routes and points to show. Per browser, like every other
   // filter here - so a spectator's last combination is their preset.
   const [routeFilter, setRouteFilter] = usePersistedState('routeFilter', {
@@ -193,6 +202,11 @@ const MainPage = () => {
     const event = availableEvents.length === 1 ? availableEvents[0] : null;
     return event === routeFilter.event ? routeFilter : { ...routeFilter, event };
   }, [availableEvents, routeFilter]);
+  // What the map and bottom bar actually receive. Null on a stock host, so
+  // MapGeofence draws everything (matchesRouteFilter passes a null filter
+  // through) and a persisted routeFilter cannot hide tracks with no control
+  // on screen to show them again.
+  const activeRouteFilter = eventUi ? effectiveRouteFilter : null;
 
   // On a phone the list used to start closed, and the map starts empty by
   // design, so a spectator opening a signage link landed on a blank screen with
@@ -205,7 +219,9 @@ const MainPage = () => {
   // spectator, who has a watch list and wants the map, still lands on the map.
   // Reads the raw stored list rather than `favourites`, which is empty on the
   // first paint until the websocket delivers devices.
-  const [devicesOpen, setDevicesOpen] = useState(desktop || storedFavourites.length === 0);
+  const [devicesOpen, setDevicesOpen] = useState(
+    desktop || (eventUi && storedFavourites.length === 0),
+  );
   const [eventsOpen, setEventsOpen] = useState(false);
 
   const onEventsClick = useCallback(() => setEventsOpen(true), [setEventsOpen]);
@@ -241,6 +257,14 @@ const MainPage = () => {
     if (!followParam) {
       return;
     }
+    // Spectator links are an event feature. On a stock host the parameter is
+    // consumed without acting - starring a device on an origin that shows no
+    // star to un-star it with would be worse than ignoring the link.
+    if (!eventUi) {
+      searchParams.delete('follow');
+      setSearchParams(searchParams, { replace: true });
+      return;
+    }
     const wanted = parseInt(followParam, 10);
     if (Number.isNaN(wanted)) {
       return;
@@ -266,7 +290,16 @@ const MainPage = () => {
     // session, and the spectator still has a working map and list.
     searchParams.delete('follow');
     setSearchParams(searchParams, { replace: true });
-  }, [followParam, devices, isFavourite, toggleFavourite, dispatch, searchParams, setSearchParams]);
+  }, [
+    followParam,
+    eventUi,
+    devices,
+    isFavourite,
+    toggleFavourite,
+    dispatch,
+    searchParams,
+    setSearchParams,
+  ]);
 
   useFilter(
     keyword,
@@ -275,7 +308,7 @@ const MainPage = () => {
     filterMapOrFavourites,
     favourites,
     showFavourites,
-    mapFavouritesOnly,
+    effectiveMapFavouritesOnly,
     positions,
     setFilteredDevices,
     setFilteredPositions,
@@ -289,7 +322,7 @@ const MainPage = () => {
             filteredPositions={filteredPositions}
             selectedPosition={selectedPosition}
             onEventsClick={onEventsClick}
-            routeFilter={effectiveRouteFilter}
+            routeFilter={activeRouteFilter}
           />
         </Suspense>
       )}
@@ -315,7 +348,7 @@ const MainPage = () => {
           looking at.
         */}
         <Paper square elevation={3} className={classes.header}>
-          <RouteFilter filter={effectiveRouteFilter} setFilter={setRouteFilter} />
+          {eventUi && <RouteFilter filter={effectiveRouteFilter} setFilter={setRouteFilter} />}
           <MainToolbar
             filteredDevices={filteredDevices}
             devicesOpen={devicesOpen}
@@ -329,15 +362,17 @@ const MainPage = () => {
             filterMap={filterMap}
             setFilterMap={setFilterMap}
           />
-          <DeviceListControls
-            mode={effectiveMode}
-            setMode={setListMode}
-            totalCount={Object.keys(devices).length}
-            favouriteCount={favourites.length}
-            mapFavouritesOnly={mapFavouritesOnly}
-            setMapFavouritesOnly={setMapFavouritesOnly}
-            kiosk={kiosk}
-          />
+          {eventUi && (
+            <DeviceListControls
+              mode={effectiveMode}
+              setMode={setListMode}
+              totalCount={Object.keys(devices).length}
+              favouriteCount={favourites.length}
+              mapFavouritesOnly={mapFavouritesOnly}
+              setMapFavouritesOnly={setMapFavouritesOnly}
+              kiosk={kiosk}
+            />
+          )}
         </Paper>
         <div className={classes.middle}>
           {!desktop && (
@@ -354,7 +389,7 @@ const MainPage = () => {
                   filteredPositions={filteredPositions}
                   selectedPosition={selectedPosition}
                   onEventsClick={onEventsClick}
-                  routeFilter={effectiveRouteFilter}
+                  routeFilter={activeRouteFilter}
                 />
               </Suspense>
             </div>
@@ -376,7 +411,7 @@ const MainPage = () => {
               BottomMenu: usePersistedState instances do not notify each other,
               so a second reader would show the previous event until remount.
             */}
-            <BottomMenu routeFilter={effectiveRouteFilter} />
+            <BottomMenu routeFilter={activeRouteFilter} />
           </div>
         )}
       </div>

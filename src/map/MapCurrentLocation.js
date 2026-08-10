@@ -3,6 +3,7 @@ import { useEffect } from 'react';
 import { map } from './core/MapView';
 import { useTheme } from '@mui/material';
 import { savePersistedState } from '../common/util/usePersistedState';
+import useEventUi from '../common/util/useEventUi';
 
 /**
  * "You are here".
@@ -69,8 +70,24 @@ export const enableUserLocation = () => {
 
 const MapCurrentLocation = () => {
   const theme = useTheme();
+  // Everything above is event chrome. A stock host gets upstream's control
+  // back, verbatim: a one-shot high-accuracy fly-to, no tracking, no dot, no
+  // remembered consent - an operator at a desk knows where they are.
+  const eventUi = useEventUi();
 
   useEffect(() => {
+    if (!eventUi) {
+      const control = new maplibregl.GeolocateControl({
+        positionOptions: {
+          enableHighAccuracy: true,
+          timeout: 5000,
+        },
+        trackUserLocation: false,
+      });
+      map.addControl(control, theme.direction === 'rtl' ? 'top-left' : 'top-right');
+      return () => map.removeControl(control);
+    }
+
     const control = new maplibregl.GeolocateControl({
       positionOptions: {
         enableHighAccuracy: false,
@@ -136,7 +153,7 @@ const MapCurrentLocation = () => {
       tracking = false;
       map.removeControl(control);
     };
-  }, [theme.direction]);
+  }, [theme.direction, eventUi]);
 
   return null;
 };

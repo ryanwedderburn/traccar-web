@@ -22,6 +22,7 @@ import MapRuler from '../map/control/MapRuler';
 import MapLocateFollowed from '../map/control/MapLocateFollowed';
 import MapNotification from '../map/control/MapNotification';
 import useFeatures from '../common/util/useFeatures';
+import useEventUi from '../common/util/useEventUi';
 
 const MainMap = ({ filteredPositions, selectedPosition, onEventsClick, routeFilter }) => {
   const theme = useTheme();
@@ -32,6 +33,10 @@ const MainMap = ({ filteredPositions, selectedPosition, onEventsClick, routeFilt
   const eventsAvailable = useSelector((state) => !!state.events.items.length);
 
   const features = useFeatures();
+  // Follow, the route camera and the frame-both control are event chrome; a
+  // stock host gets upstream's map. routeFilter arrives as null there already -
+  // MainPage owns that - so MapGeofence needs no gate of its own.
+  const eventUi = useEventUi();
 
   const [rulerActive, setRulerActive] = useState(false);
 
@@ -58,13 +63,13 @@ const MainMap = ({ filteredPositions, selectedPosition, onEventsClick, routeFilt
         />
         <MapDefaultCamera filteredPositions={filteredPositions} />
         <MapSelectedDevice />
-        <MapFollow />
+        {eventUi && <MapFollow />}
         {/* After MapDefaultCamera, which owns the opening frame. */}
-        <MapRouteCamera filter={routeFilter} />
+        {eventUi && <MapRouteCamera filter={routeFilter} />}
         <PoiMap />
         <MapRuler positions={filteredPositions} onActiveChange={setRulerActive} />
         {/* Only present while a rider is being watched - see the component. */}
-        <MapLocateFollowed />
+        {eventUi && <MapLocateFollowed />}
         {!features.disableEvents && (
           <MapNotification enabled={eventsAvailable} onClick={onEventsClick} />
         )}

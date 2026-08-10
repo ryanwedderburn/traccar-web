@@ -36,6 +36,7 @@ import { useAdministrator } from '../common/util/permissions';
 import EngineIcon from '../resources/images/data/engine.svg?react';
 import { useAttributePreference } from '../common/util/preferences';
 import useFavourites from '../common/util/useFavourites';
+import useEventUi from '../common/util/useEventUi';
 import useKiosk from '../common/util/useKiosk';
 import GeofencesValue from '../common/components/GeofencesValue';
 import DriverValue from '../common/components/DriverValue';
@@ -98,6 +99,9 @@ const DeviceRow = ({ devices, index, style }) => {
   // three icons of clutter across several hundred rows. Follow and Favourite
   // stay because they are the only two things a spectator does here.
   const kiosk = useKiosk();
+  // Follow and Favourite are event chrome; on a stock host the row is
+  // upstream's - avatar, name, status, indicators - and nothing else.
+  const eventUi = useEventUi();
 
   const item = devices[index];
   const position = useSelector((state) => state.session.positions[item.id]);
@@ -226,49 +230,54 @@ const DeviceRow = ({ devices, index, style }) => {
             )}
           </>
         )}
-        <Tooltip title={t('deviceFollow') || 'Follow'}>
-          <IconButton
-            className={classes.rowButton}
-            size="small"
-            aria-label={t('deviceFollow') || 'Follow'}
-            aria-pressed={followedId === item.id}
-            onClick={(event) => {
-              event.stopPropagation();
-              // Following implies looking at it, so make it the selection too -
-              // but only on the way on, or switching it off would nudge the map.
-              if (followedId !== item.id) {
-                dispatch(devicesActions.selectId(item.id));
-              }
-              dispatch(followActions.toggle(item.id));
-            }}
-          >
-            {followedId === item.id ? (
-              <GpsFixedIcon fontSize="small" className={classes.followOn} />
-            ) : (
-              <GpsNotFixedIcon fontSize="small" className={classes.neutral} />
-            )}
-          </IconButton>
-        </Tooltip>
-        <Tooltip title={t('sharedFavourite') || 'Favourite'}>
-          <IconButton
-            className={classes.rowButton}
-            size="small"
-            aria-label={t('sharedFavourite') || 'Favourite'}
-            aria-pressed={isFavourite(item.id)}
-            onClick={(event) => {
-              // The whole row is a button that selects the device, so the star
-              // has to stop the click before it gets there.
-              event.stopPropagation();
-              toggleFavourite(item.id);
-            }}
-          >
-            {isFavourite(item.id) ? (
-              <StarIcon fontSize="small" className={classes.favouriteOn} />
-            ) : (
-              <StarBorderIcon fontSize="small" className={classes.neutral} />
-            )}
-          </IconButton>
-        </Tooltip>
+        {eventUi && (
+          <>
+            <Tooltip title={t('deviceFollow') || 'Follow'}>
+              <IconButton
+                className={classes.rowButton}
+                size="small"
+                aria-label={t('deviceFollow') || 'Follow'}
+                aria-pressed={followedId === item.id}
+                onClick={(event) => {
+                  event.stopPropagation();
+                  // Following implies looking at it, so make it the selection
+                  // too - but only on the way on, or switching it off would
+                  // nudge the map.
+                  if (followedId !== item.id) {
+                    dispatch(devicesActions.selectId(item.id));
+                  }
+                  dispatch(followActions.toggle(item.id));
+                }}
+              >
+                {followedId === item.id ? (
+                  <GpsFixedIcon fontSize="small" className={classes.followOn} />
+                ) : (
+                  <GpsNotFixedIcon fontSize="small" className={classes.neutral} />
+                )}
+              </IconButton>
+            </Tooltip>
+            <Tooltip title={t('sharedFavourite') || 'Favourite'}>
+              <IconButton
+                className={classes.rowButton}
+                size="small"
+                aria-label={t('sharedFavourite') || 'Favourite'}
+                aria-pressed={isFavourite(item.id)}
+                onClick={(event) => {
+                  // The whole row is a button that selects the device, so the
+                  // star has to stop the click before it gets there.
+                  event.stopPropagation();
+                  toggleFavourite(item.id);
+                }}
+              >
+                {isFavourite(item.id) ? (
+                  <StarIcon fontSize="small" className={classes.favouriteOn} />
+                ) : (
+                  <StarBorderIcon fontSize="small" className={classes.neutral} />
+                )}
+              </IconButton>
+            </Tooltip>
+          </>
+        )}
       </ListItemButton>
     </div>
   );
