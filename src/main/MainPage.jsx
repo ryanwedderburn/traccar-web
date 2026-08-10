@@ -18,6 +18,7 @@ import RouteFilter from './components/RouteFilter';
 import { useAttributePreference } from '../common/util/preferences';
 import useFavourites from '../common/util/useFavourites';
 import useEventUi from '../common/util/useEventUi';
+import useFavouritesUi from '../common/util/useFavouritesUi';
 import useKiosk from '../common/util/useKiosk';
 import SupportWidget from '../common/components/SupportWidget';
 import useRouteFilter from '../common/util/useRouteFilter';
@@ -136,6 +137,9 @@ const MainPage = () => {
   // from when this origin carried the event UI cannot silently filter a map
   // that no longer shows any control to unfilter it with.
   const eventUi = useEventUi();
+  // Favourites chrome is separately grantable ("ui.favourites") - the
+  // route filter and the ?follow= deep link below stay strictly eventUi.
+  const favouritesUi = useFavouritesUi();
 
   const { favourites, stored: storedFavourites, isFavourite, toggleFavourite } = useFavourites();
   // Kiosk prefers Favourites; everyone else prefers All. It is a preference
@@ -160,7 +164,7 @@ const MainPage = () => {
   //
   // Derived rather than written back, so unstarring everything and starring
   // again returns you to the tab you chose.
-  const effectiveMode = eventUi && favourites.length ? listMode : 'all';
+  const effectiveMode = favouritesUi && favourites.length ? listMode : 'all';
   const showFavourites = effectiveMode === 'favourites';
   // Favourites filters the map as well as the list. Filtering only the list is
   // half a feature with hundreds of devices - you get a clean list and a wall
@@ -172,7 +176,7 @@ const MainPage = () => {
   // straight back the moment a spectator taps All to search for a rider. The
   // funnel still turns it off for anyone who wants the whole field.
   const [mapFavouritesOnly, setMapFavouritesOnly] = usePersistedState('mapFavouritesOnly', kiosk);
-  const effectiveMapFavouritesOnly = eventUi && mapFavouritesOnly;
+  const effectiveMapFavouritesOnly = favouritesUi && mapFavouritesOnly;
   // Which event's routes and points to show. Per browser, like every other
   // filter here - so a spectator's last combination is their preset.
   const [routeFilter, setRouteFilter] = usePersistedState('routeFilter', {
@@ -220,7 +224,7 @@ const MainPage = () => {
   // Reads the raw stored list rather than `favourites`, which is empty on the
   // first paint until the websocket delivers devices.
   const [devicesOpen, setDevicesOpen] = useState(
-    desktop || (eventUi && storedFavourites.length === 0),
+    desktop || (favouritesUi && storedFavourites.length === 0),
   );
   const [eventsOpen, setEventsOpen] = useState(false);
 
@@ -362,7 +366,7 @@ const MainPage = () => {
             filterMap={filterMap}
             setFilterMap={setFilterMap}
           />
-          {eventUi && (
+          {favouritesUi && (
             <DeviceListControls
               mode={effectiveMode}
               setMode={setListMode}

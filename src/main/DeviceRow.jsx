@@ -36,7 +36,8 @@ import { useAdministrator } from '../common/util/permissions';
 import EngineIcon from '../resources/images/data/engine.svg?react';
 import { useAttributePreference } from '../common/util/preferences';
 import useFavourites from '../common/util/useFavourites';
-import useEventUi from '../common/util/useEventUi';
+import useFollowUi from '../common/util/useFollowUi';
+import useFavouritesUi from '../common/util/useFavouritesUi';
 import useKiosk from '../common/util/useKiosk';
 import GeofencesValue from '../common/components/GeofencesValue';
 import DriverValue from '../common/components/DriverValue';
@@ -101,7 +102,10 @@ const DeviceRow = ({ devices, index, style }) => {
   const kiosk = useKiosk();
   // Follow and Favourite are event chrome; on a stock host the row is
   // upstream's - avatar, name, status, indicators - and nothing else.
-  const eventUi = useEventUi();
+  // Per-control gates, each a hostBranding key away for any host - see the
+  // hooks for defaults and reasoning.
+  const followUi = useFollowUi();
+  const favouritesUi = useFavouritesUi();
 
   const item = devices[index];
   const position = useSelector((state) => state.session.positions[item.id]);
@@ -230,9 +234,8 @@ const DeviceRow = ({ devices, index, style }) => {
             )}
           </>
         )}
-        {eventUi && (
-          <>
-            <Tooltip title={t('deviceFollow') || 'Follow'}>
+        {followUi && (
+          <Tooltip title={t('deviceFollow') || 'Follow'}>
               <IconButton
                 className={classes.rowButton}
                 size="small"
@@ -255,8 +258,10 @@ const DeviceRow = ({ devices, index, style }) => {
                   <GpsNotFixedIcon fontSize="small" className={classes.neutral} />
                 )}
               </IconButton>
-            </Tooltip>
-            <Tooltip title={t('sharedFavourite') || 'Favourite'}>
+          </Tooltip>
+        )}
+        {favouritesUi && (
+          <Tooltip title={t('sharedFavourite') || 'Favourite'}>
               <IconButton
                 className={classes.rowButton}
                 size="small"
@@ -276,7 +281,6 @@ const DeviceRow = ({ devices, index, style }) => {
                 )}
               </IconButton>
             </Tooltip>
-          </>
         )}
       </ListItemButton>
     </div>
