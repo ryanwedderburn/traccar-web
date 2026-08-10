@@ -127,7 +127,7 @@ const DashboardPage = () => {
   const positions = useSelector((state) => state.session.positions);
   const groups = useSelector((state) => state.groups.items);
 
-  const [fuelBurned, setFuelBurned] = useState(null);
+  const [engineHours, setEngineHours] = useState(null);
   const [alertCount, setAlertCount] = useState(null);
   const [maintenances, setMaintenances] = useState([]);
 
@@ -153,9 +153,11 @@ const DashboardPage = () => {
           { headers: { Accept: 'application/json' } },
         );
         const summary = await summaryResponse.json();
-        setFuelBurned(summary.reduce((sum, item) => sum + (item.spentFuel || 0), 0));
+        // NOT spentFuel: it sums level deltas, and percent-based fuel with
+        // refill boundaries yields negative litres (seen live, 2026-08-10).
+        setEngineHours(summary.reduce((sum, item) => sum + (item.engineHours || 0), 0));
       } catch {
-        setFuelBurned(null);
+        setEngineHours(null);
       }
       try {
         const eventsResponse = await fetchOrThrow(
@@ -224,8 +226,8 @@ const DashboardPage = () => {
       color: theme.palette.success.main,
     },
     {
-      value: fuelBurned != null ? `${Math.round(fuelBurned)} L` : '—',
-      caption: 'fuel burned today',
+      value: engineHours != null ? `${Math.round(engineHours / HOUR)} h` : '—',
+      caption: 'engine hours today',
       color: theme.palette.text.primary,
     },
     {
