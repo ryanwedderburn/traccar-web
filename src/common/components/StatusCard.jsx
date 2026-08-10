@@ -36,6 +36,8 @@ import { devicesActions } from '../../store';
 import { useCatch, useCatchCallback } from '../../reactHelper';
 import { useAttributePreference } from '../util/preferences';
 import useKiosk from '../util/useKiosk';
+import useEquipmentUi from '../util/useEquipmentUi';
+import EquipmentGauges from './EquipmentGauges';
 import fetchOrThrow from '../util/fetchOrThrow';
 
 const useStyles = makeStyles()((theme, { desktopPadding }) => ({
@@ -126,6 +128,7 @@ const StatusCard = ({ deviceId, position, onClose, disableActions, desktopPaddin
   const readonly = useRestriction('readonly');
   const deviceReadonly = useDeviceReadonly();
   const kiosk = useKiosk();
+  const equipmentUi = useEquipmentUi();
 
   const shareDisabled = useSelector((state) => state.session.server.attributes.disableShare);
   const user = useSelector((state) => state.session.user);
@@ -197,6 +200,9 @@ const StatusCard = ({ deviceId, position, onClose, disableActions, desktopPaddin
                   </IconButton>
                 </div>
               </CardMedia>
+              {position && equipmentUi && (
+                <EquipmentGauges position={position} device={device} />
+              )}
               {position && (
                 <CardContent className={classes.content}>
                   <Table size="small" className={classes.table}>
