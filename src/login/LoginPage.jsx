@@ -99,6 +99,17 @@ const LoginPage = () => {
   });
   const changeEnabled = useSelector((state) => !state.session.server.attributes.disableChange);
   const emailEnabled = useSelector((state) => state.session.server.emailEnabled);
+  /*
+   * Per-host switch to hide the reset-password link: `emailEnabled` is
+   * server-wide (SMTP is configured for the event hosts), but a shared demo
+   * account must not invite a visitor to reset its password and lock out
+   * everyone else. Delivered per hostname through hostBranding like the
+   * feature flags; parse-don't-coerce, same as useEventUi.
+   */
+  const resetDisabled = useSelector((state) => {
+    const value = state.session.server.attributes?.['ui.disableLoginReset'];
+    return value === true || value === 'true';
+  });
   const openIdEnabled = useSelector((state) => state.session.server.openIdEnabled);
   const openIdForced = useSelector(
     (state) => state.session.server.openIdEnabled && state.session.server.openIdForce,
@@ -280,7 +291,7 @@ const LoginPage = () => {
                 {t('loginRegister')}
               </Link>
             )}
-            {emailEnabled && (
+            {emailEnabled && !resetDisabled && (
               <Link
                 onClick={() => navigate('/reset-password')}
                 className={classes.link}
