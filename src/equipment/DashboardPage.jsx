@@ -11,6 +11,7 @@ import dayjs from 'dayjs';
 import useEquipmentUi from '../common/util/useEquipmentUi';
 import fetchOrThrow from '../common/util/fetchOrThrow';
 import { devicesActions } from '../store';
+import decodeDm1 from './dtc';
 
 /**
  * The fleet dashboard - Phase 2's centrepiece, spec'd by slide 3 of the
@@ -86,6 +87,16 @@ const useStyles = makeStyles()((theme) => ({
 }));
 
 const HOUR = 3600000;
+const SHIFT_START_HOUR = 6;
+
+/**
+ * An idling diesel turns ~600-900 rpm, so `rpm > 0` cannot mean working -
+ * the first version made exactly that mistake and called every lunch-break
+ * idle "Working". Working is motion, or rpm at genuine load. The threshold
+ * is per-device data (`workingRpm`) with a diesel-plant default, same rule
+ * as the gauge ranges.
+ */
+const DEFAULT_WORKING_RPM = 1000;
 
 /**
  * rank orders the machine list EXCEPTIONS FIRST - the industry's
@@ -95,19 +106,20 @@ const HOUR = 3600000;
  */
 const machineState = (device, position, theme) => {
   if (device.status !== 'online') {
-    return { label: 'Offline', color: theme.palette.action.disabled, rank: 4 };
+    return { label: 'Offline', color: theme.palette.action.disabled, rank: 4, idling: false };
   }
   const a = position?.attributes || {};
+  const workingRpm = Number(device?.attributes?.workingRpm) || DEFAULT_WORKING_RPM;
   if (a.motion && !a.ignition) {
-    return { label: 'Moving · no ignition', color: theme.palette.error.main, rank: 0 };
+    return { label: 'Moving · no ignition', color: theme.palette.error.main, rank: 0, idling: false };
   }
-  if (a.ignition && (a.rpm > 0 || a.motion)) {
-    return { label: 'Working', color: theme.palette.success.main, rank: 2 };
+  if (a.ignition && (a.motion || a.rpm >= workingRpm)) {
+    return { label: 'Working', color: theme.palette.success.main, rank: 2, idling: false };
   }
   if (a.ignition) {
-    return { label: 'Idling', color: theme.palette.warning.main, rank: 1 };
+    return { label: 'Idling', color: theme.palette.warning.main, rank: 1, idling: true };
   }
-  return { label: 'Static · OK', color: theme.palette.text.secondary, rank: 3 };
+  return { label: 'Static · OK', color: theme.palette.text.secondary, rank: 3, idling: false };
 };
 
 const DashboardPage = () => {
@@ -128,6 +140,8 @@ const DashboardPage = () => {
   const groups = useSelector((state) => state.groups.items);
 
   const [engineHours, setEngineHours] = useState(null);
+  const [hoursByDevice, setHoursByDevice] = useState({});
+  const [idleSince, setIdleSince] = useState({});
   const [alerts, setAlerts] = useState(null);
   const [alertsOpen, setAlertsOpen] = useState(false);
   const [maintenances, setMaintenances] = useState([]);
@@ -157,8 +171,12 @@ const DashboardPage = () => {
         // NOT spentFuel: it sums level deltas, and percent-based fuel with
         // refill boundaries yields negative litres (seen live, 2026-08-10).
         setEngineHours(summary.reduce((sum, item) => sum + (item.engineHours || 0), 0));
+        setHoursByDevice(Object.fromEntries(
+          summary.map((item) => [item.deviceId, item.engineHours || 0]),
+        ));
       } catch {
         setEngineHours(null);
+        setHoursByDevice({});
       }
       try {
         const eventsResponse = await fetchOrThrow(
@@ -170,8 +188,21 @@ const DashboardPage = () => {
         setAlerts(events
           .filter((event) => alertTypes.includes(event.type))
           .sort((a, b) => b.eventTime.localeCompare(a.eventTime)));
+        // "Idling 42 min": a machine idling now has been idle since its
+        // last stop / ignition-on event today. Event-derived, so it is an
+        // approximation at day boundaries - good enough for the glance.
+        const since = {};
+        events
+          .filter((event) => ['deviceStopped', 'ignitionOn'].includes(event.type))
+          .forEach((event) => {
+            if (!since[event.deviceId] || event.eventTime > since[event.deviceId]) {
+              since[event.deviceId] = event.eventTime;
+            }
+          });
+        setIdleSince(since);
       } catch {
         setAlerts(null);
+        setIdleSince({});
       }
       try {
         const maintenanceResponse = await fetchOrThrow('/api/maintenance');
@@ -185,10 +216,24 @@ const DashboardPage = () => {
     return () => clearInterval(timer);
   }, [devices]);
 
+  // Utilisation, OEM-portal definition: engine hours today over shift
+  // elapsed. The finer working-vs-idle split needs history and is queued.
+  const shiftElapsed = Math.max(
+    dayjs().diff(dayjs().startOf('day').add(SHIFT_START_HOUR, 'hour')),
+    HOUR,
+  );
+
   const rows = useMemo(() => Object.values(devices).map((device) => {
     const position = positions[device.id];
     const state = machineState(device, position, theme);
     const attributes = position?.attributes || {};
+
+    if (state.idling && idleSince[device.id]) {
+      const minutes = dayjs().diff(dayjs(idleSince[device.id]), 'minute');
+      if (minutes > 0) {
+        state.label = `Idling ${minutes} min`;
+      }
+    }
 
     let service = null;
     if (attributes.hours && maintenances.length) {
@@ -202,6 +247,11 @@ const DashboardPage = () => {
       }
     }
 
+    const dayHours = hoursByDevice[device.id];
+    const utilisation = dayHours != null
+      ? Math.min(Math.round((dayHours / shiftElapsed) * 100), 100)
+      : null;
+
     return {
       device,
       group: groups[device.groupId]?.name,
@@ -209,13 +259,24 @@ const DashboardPage = () => {
       fuel: attributes.fuel,
       hours: attributes.hours,
       service,
+      utilisation,
+      fault: decodeDm1(attributes.dm1),
     };
   }).sort((a, b) => a.state.rank - b.state.rank
-    || a.device.name.localeCompare(b.device.name)), [devices, positions, groups, maintenances, theme]);
+    || a.device.name.localeCompare(b.device.name)), [
+    devices, positions, groups, maintenances, hoursByDevice, idleSince, shiftElapsed, theme,
+  ]);
 
   const online = rows.filter((row) => row.device.status === 'online').length;
-  const working = rows.filter((row) => row.state.label === 'Working').length;
   const alertRow = rows.some((row) => row.state.label.startsWith('Moving'));
+  const faults = rows.filter((row) => row.fault);
+
+  const onlineUtils = rows
+    .filter((row) => row.device.status === 'online')
+    .map((row) => row.utilisation || 0);
+  const utilisation = onlineUtils.length
+    ? Math.round(onlineUtils.reduce((sum, u) => sum + u, 0) / onlineUtils.length)
+    : null;
 
   const kpis = [
     {
@@ -224,8 +285,8 @@ const DashboardPage = () => {
       color: online === rows.length ? theme.palette.success.main : theme.palette.warning.main,
     },
     {
-      value: online ? `${Math.round((working / online) * 100)}%` : '—',
-      caption: 'working now',
+      value: utilisation != null ? `${utilisation}%` : '—',
+      caption: 'utilisation today',
       color: theme.palette.success.main,
     },
     {
@@ -317,11 +378,51 @@ const DashboardPage = () => {
             ))}
           </>
         )}
+        {faults.length > 0 && (
+          <>
+            <Typography variant="overline" className={classes.section} component="div">
+              Machine health
+            </Typography>
+            {faults.map(({ device, fault }) => (
+              <Paper
+                key={`fault-${device.id}`}
+                className={classes.machine}
+                onClick={() => handleRowClick(device.id)}
+                style={{ cursor: 'pointer' }}
+              >
+                <span
+                  className={classes.dot}
+                  style={{
+                    backgroundColor: fault.severe
+                      ? theme.palette.error.main
+                      : theme.palette.warning.main,
+                  }}
+                />
+                <div className={classes.machineText}>
+                  <Typography variant="body2" fontWeight={600} noWrap>
+                    {fault.component}
+                  </Typography>
+                  <Typography variant="caption" color="textSecondary" noWrap component="div">
+                    {`${device.name} · ${fault.condition}`}
+                  </Typography>
+                </div>
+                <div className={classes.machineRight}>
+                  <Typography variant="caption" color="textSecondary" component="div">
+                    {`SPN ${fault.spn} · FMI ${fault.fmi}`}
+                  </Typography>
+                  <Typography variant="caption" color="textSecondary" component="div">
+                    {`seen ${fault.oc}×`}
+                  </Typography>
+                </div>
+              </Paper>
+            ))}
+          </>
+        )}
         <Typography variant="overline" className={classes.section} component="div">
           Machines
           {alertRow ? ' · attention needed' : ''}
         </Typography>
-        {rows.map(({ device, group, state, fuel, hours, service }) => (
+        {rows.map(({ device, group, state, fuel, hours, service, utilisation: util }) => (
           <Paper
             key={device.id}
             className={classes.machine}
@@ -343,6 +444,7 @@ const DashboardPage = () => {
               </Typography>
               <Typography variant="caption" color="textSecondary" component="div">
                 {[
+                  util != null && util > 0 ? `Util ${util}%` : null,
                   fuel != null ? `Fuel ${Math.round(fuel)}%` : null,
                   hours != null ? `${Math.round(hours / HOUR)} h` : null,
                   service != null ? `Service in ${service} h` : null,
