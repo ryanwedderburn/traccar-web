@@ -39,6 +39,15 @@ const BottomMenu = ({ routeFilter }) => {
 
   const readonly = useRestriction('readonly');
   const disableReports = useRestriction('disableReports');
+  /*
+   * Cosmetic sibling of the account-level restriction, in upstream's
+   * ui.disable* naming. The restriction revokes the report API - which the
+   * equipment dashboard's KPIs ride - so hiding Traccar's generic report
+   * pages must not use it. Set per host via hostBranding
+   * ("ui.disableReports": true) until the proper reporting surface exists.
+   */
+  const uiReportsValue = useAttributePreference('ui.disableReports');
+  const reportsHidden = uiReportsValue === true || uiReportsValue === 'true';
   const devices = useSelector((state) => state.devices.items);
   const user = useSelector((state) => state.session.user);
   const socket = useSelector((state) => state.session.socket);
@@ -244,7 +253,7 @@ const BottomMenu = ({ routeFilter }) => {
             value="support"
           />
         )}
-        {!disableReports && (
+        {!disableReports && !reportsHidden && (
           <BottomNavigationAction
             label={t('reportTitle')}
             icon={<DescriptionIcon />}
