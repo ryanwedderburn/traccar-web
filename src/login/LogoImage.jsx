@@ -23,8 +23,15 @@ const LogoImage = ({ color }) => {
   const logo = useSelector((state) => state.session.server.attributes?.logo);
   const logoInverted = useSelector((state) => state.session.server.attributes?.logoInverted);
 
+  /*
+   * Upstream uses logoInverted only for the expanded (colored) sidebar. But
+   * the compact layout draws the logo on the page background, which in dark
+   * mode is near-black - where a dark-on-light logo disappears. Seen live
+   * 2026-08-10 with the telematics wordmark. Dark mode wants the inverted
+   * asset wherever the logo lands.
+   */
   if (logo) {
-    if (expanded && logoInverted) {
+    if ((expanded || theme.palette.mode === 'dark') && logoInverted) {
       return <img className={classes.image} src={logoInverted} alt="" />;
     }
     return <img className={classes.image} src={logo} alt="" />;
