@@ -205,11 +205,7 @@ const BottomMenu = ({ routeFilter }) => {
           would render empty in every other locale.
         */}
         {equipmentUi && (
-          <BottomNavigationAction
-            label="Fleet"
-            icon={<SpaceDashboardIcon />}
-            value="dashboard"
-          />
+          <BottomNavigationAction label="Fleet" icon={<SpaceDashboardIcon />} value="dashboard" />
         )}
         {/*
           Opens a dialog rather than navigating, so `currentSelection()` never

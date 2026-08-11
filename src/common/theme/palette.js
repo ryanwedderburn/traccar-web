@@ -26,35 +26,35 @@ const brand = (server, user, key) =>
 export default (server, user, darkMode) => {
   const primary = brand(server, user, 'colorPrimary') || (darkMode ? indigo[200] : indigo[900]);
   return {
-  mode: darkMode ? 'dark' : 'light',
-  background: {
-    default: darkMode ? grey[900] : grey[50],
-  },
-  primary: {
-    main: primary,
-  },
-  /*
-   * The login sidebar's fill. Upstream paints it with primary, which was fine
-   * while primary was a wall colour; under the graphite+orange standard
-   * (docs/BRAND.md) primary is an accent, and a full slab of it is exactly
-   * what the standard forbids. `colorSidebar` overrides the slab alone -
-   * per host via hostBranding like any other colour key - and an absent key
-   * falls back to primary, which is what keeps ROA's gold sidebar untouched.
-   */
-  sidebar: {
-    main: brand(server, user, 'colorSidebar') || primary,
-  },
-  secondary: {
-    main: brand(server, user, 'colorSecondary') || (darkMode ? green[200] : green[800]),
-  },
-  neutral: {
-    main: grey[500],
-  },
-  geometry: {
-    main: '#3bb2d0',
-  },
-  alwaysDark: {
-    main: grey[900],
-  },
+    mode: darkMode ? 'dark' : 'light',
+    background: {
+      default: darkMode ? grey[900] : grey[50],
+    },
+    primary: {
+      main: primary,
+    },
+    /*
+     * The login sidebar's fill. Upstream paints it with primary, which was fine
+     * while primary was a wall colour; under the graphite+orange standard
+     * (docs/BRAND.md) primary is an accent, and a full slab of it is exactly
+     * what the standard forbids. `colorSidebar` overrides the slab alone -
+     * per host via hostBranding like any other colour key - and an absent key
+     * falls back to primary, which is what keeps ROA's gold sidebar untouched.
+     */
+    sidebar: {
+      main: brand(server, user, 'colorSidebar') || primary,
+    },
+    secondary: {
+      main: brand(server, user, 'colorSecondary') || (darkMode ? green[200] : green[800]),
+    },
+    neutral: {
+      main: grey[500],
+    },
+    geometry: {
+      main: '#3bb2d0',
+    },
+    alwaysDark: {
+      main: grey[900],
+    },
   };
 };

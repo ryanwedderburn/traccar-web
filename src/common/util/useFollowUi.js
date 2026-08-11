@@ -16,8 +16,8 @@ const truthy = (value) => value === true || value === 'true';
 export default () => {
   const eventUi = useEventUi();
   const equipmentUi = useEquipmentUi();
-  const granted = useSelector(
-    (state) => truthy(state.session.server?.attributes?.['ui.followButton']),
+  const granted = useSelector((state) =>
+    truthy(state.session.server?.attributes?.['ui.followButton']),
   );
   return eventUi || equipmentUi || granted;
 };

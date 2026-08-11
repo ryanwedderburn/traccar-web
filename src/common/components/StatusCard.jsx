@@ -200,9 +200,7 @@ const StatusCard = ({ deviceId, position, onClose, disableActions, desktopPaddin
                   </IconButton>
                 </div>
               </CardMedia>
-              {position && equipmentUi && (
-                <EquipmentGauges position={position} device={device} />
-              )}
+              {position && equipmentUi && <EquipmentGauges position={position} device={device} />}
               {position && (
                 <CardContent className={classes.content}>
                   <Table size="small" className={classes.table}>

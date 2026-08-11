@@ -1,9 +1,7 @@
 import { useEffect, useMemo, useState } from 'react';
 import { useDispatch, useSelector } from 'react-redux';
 import { useNavigate } from 'react-router-dom';
-import {
-  AppBar, Toolbar, IconButton, Typography, Paper,
-} from '@mui/material';
+import { AppBar, Toolbar, IconButton, Typography, Paper } from '@mui/material';
 import { useTheme } from '@mui/material/styles';
 import { makeStyles } from 'tss-react/mui';
 import ArrowBackIcon from '@mui/icons-material/ArrowBack';
@@ -111,7 +109,12 @@ const machineState = (device, position, theme) => {
   const a = position?.attributes || {};
   const workingRpm = Number(device?.attributes?.workingRpm) || DEFAULT_WORKING_RPM;
   if (a.motion && !a.ignition) {
-    return { label: 'Moving · no ignition', color: theme.palette.error.main, rank: 0, idling: false };
+    return {
+      label: 'Moving · no ignition',
+      color: theme.palette.error.main,
+      rank: 0,
+      idling: false,
+    };
   }
   if (a.ignition && (a.motion || a.rpm >= workingRpm)) {
     return { label: 'Working', color: theme.palette.success.main, rank: 2, idling: false };
@@ -163,31 +166,37 @@ const DashboardPage = () => {
       query.append('from', dayjs().startOf('day').toISOString());
       query.append('to', dayjs().toISOString());
       try {
-        const summaryResponse = await fetchOrThrow(
-          `/api/reports/summary?${query.toString()}`,
-          { headers: { Accept: 'application/json' } },
-        );
+        const summaryResponse = await fetchOrThrow(`/api/reports/summary?${query.toString()}`, {
+          headers: { Accept: 'application/json' },
+        });
         const summary = await summaryResponse.json();
         // NOT spentFuel: it sums level deltas, and percent-based fuel with
         // refill boundaries yields negative litres (seen live, 2026-08-10).
         setEngineHours(summary.reduce((sum, item) => sum + (item.engineHours || 0), 0));
-        setHoursByDevice(Object.fromEntries(
-          summary.map((item) => [item.deviceId, item.engineHours || 0]),
-        ));
+        setHoursByDevice(
+          Object.fromEntries(summary.map((item) => [item.deviceId, item.engineHours || 0])),
+        );
       } catch {
         setEngineHours(null);
         setHoursByDevice({});
       }
       try {
-        const eventsResponse = await fetchOrThrow(
-          `/api/reports/events?${query.toString()}`,
-          { headers: { Accept: 'application/json' } },
-        );
+        const eventsResponse = await fetchOrThrow(`/api/reports/events?${query.toString()}`, {
+          headers: { Accept: 'application/json' },
+        });
         const events = await eventsResponse.json();
-        const alertTypes = ['deviceFuelDrop', 'maintenance', 'geofenceExit', 'alarm', 'deviceOverspeed'];
-        setAlerts(events
-          .filter((event) => alertTypes.includes(event.type))
-          .sort((a, b) => b.eventTime.localeCompare(a.eventTime)));
+        const alertTypes = [
+          'deviceFuelDrop',
+          'maintenance',
+          'geofenceExit',
+          'alarm',
+          'deviceOverspeed',
+        ];
+        setAlerts(
+          events
+            .filter((event) => alertTypes.includes(event.type))
+            .sort((a, b) => b.eventTime.localeCompare(a.eventTime)),
+        );
         // "Idling 42 min": a machine idling now has been idle since its
         // last stop / ignition-on event today. Event-derived, so it is an
         // approximation at day boundaries - good enough for the glance.
@@ -223,49 +232,54 @@ const DashboardPage = () => {
     HOUR,
   );
 
-  const rows = useMemo(() => Object.values(devices).map((device) => {
-    const position = positions[device.id];
-    const state = machineState(device, position, theme);
-    const attributes = position?.attributes || {};
+  const rows = useMemo(
+    () =>
+      Object.values(devices)
+        .map((device) => {
+          const position = positions[device.id];
+          const state = machineState(device, position, theme);
+          const attributes = position?.attributes || {};
 
-    if (state.idling && idleSince[device.id]) {
-      const minutes = dayjs().diff(dayjs(idleSince[device.id]), 'minute');
-      if (minutes > 0) {
-        state.label = `Idling ${minutes} min`;
-      }
-    }
+          if (state.idling && idleSince[device.id]) {
+            const minutes = dayjs().diff(dayjs(idleSince[device.id]), 'minute');
+            if (minutes > 0) {
+              state.label = `Idling ${minutes} min`;
+            }
+          }
 
-    let service = null;
-    if (attributes.hours && maintenances.length) {
-      const remaining = Math.min(...maintenances.map((m) => {
-        const period = m.period || Infinity;
-        const next = m.start + (Math.floor((attributes.hours - m.start) / period) + 1) * period;
-        return next - attributes.hours;
-      }));
-      if (Number.isFinite(remaining)) {
-        service = Math.round(remaining / HOUR);
-      }
-    }
+          let service = null;
+          if (attributes.hours && maintenances.length) {
+            const remaining = Math.min(
+              ...maintenances.map((m) => {
+                const period = m.period || Infinity;
+                const next =
+                  m.start + (Math.floor((attributes.hours - m.start) / period) + 1) * period;
+                return next - attributes.hours;
+              }),
+            );
+            if (Number.isFinite(remaining)) {
+              service = Math.round(remaining / HOUR);
+            }
+          }
 
-    const dayHours = hoursByDevice[device.id];
-    const utilisation = dayHours != null
-      ? Math.min(Math.round((dayHours / shiftElapsed) * 100), 100)
-      : null;
+          const dayHours = hoursByDevice[device.id];
+          const utilisation =
+            dayHours != null ? Math.min(Math.round((dayHours / shiftElapsed) * 100), 100) : null;
 
-    return {
-      device,
-      group: groups[device.groupId]?.name,
-      state,
-      fuel: attributes.fuel,
-      hours: attributes.hours,
-      service,
-      utilisation,
-      fault: decodeDm1(attributes.dm1),
-    };
-  }).sort((a, b) => a.state.rank - b.state.rank
-    || a.device.name.localeCompare(b.device.name)), [
-    devices, positions, groups, maintenances, hoursByDevice, idleSince, shiftElapsed, theme,
-  ]);
+          return {
+            device,
+            group: groups[device.groupId]?.name,
+            state,
+            fuel: attributes.fuel,
+            hours: attributes.hours,
+            service,
+            utilisation,
+            fault: decodeDm1(attributes.dm1),
+          };
+        })
+        .sort((a, b) => a.state.rank - b.state.rank || a.device.name.localeCompare(b.device.name)),
+    [devices, positions, groups, maintenances, hoursByDevice, idleSince, shiftElapsed, theme],
+  );
 
   const online = rows.filter((row) => row.device.status === 'online').length;
   const alertRow = rows.some((row) => row.state.label.startsWith('Moving'));
@@ -302,14 +316,15 @@ const DashboardPage = () => {
     },
   ];
 
-  const alertLabel = (event) => ({
-    deviceFuelDrop: 'Fuel drop',
-    maintenance: 'Service due',
-    geofenceExit: 'Left site',
-    geofenceEnter: 'Entered site',
-    alarm: `Alarm${event.attributes?.alarm ? ` · ${event.attributes.alarm}` : ''}`,
-    deviceOverspeed: 'Overspeed',
-  })[event.type] || event.type;
+  const alertLabel = (event) =>
+    ({
+      deviceFuelDrop: 'Fuel drop',
+      maintenance: 'Service due',
+      geofenceExit: 'Left site',
+      geofenceEnter: 'Entered site',
+      alarm: `Alarm${event.attributes?.alarm ? ` · ${event.attributes.alarm}` : ''}`,
+      deviceOverspeed: 'Overspeed',
+    })[event.type] || event.type;
 
   return (
     <div className={classes.root}>
@@ -448,7 +463,9 @@ const DashboardPage = () => {
                   fuel != null ? `Fuel ${Math.round(fuel)}%` : null,
                   hours != null ? `${Math.round(hours / HOUR)} h` : null,
                   service != null ? `Service in ${service} h` : null,
-                ].filter(Boolean).join(' · ')}
+                ]
+                  .filter(Boolean)
+                  .join(' · ')}
               </Typography>
             </div>
           </Paper>

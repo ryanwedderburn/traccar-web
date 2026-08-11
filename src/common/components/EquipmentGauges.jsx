@@ -175,24 +175,24 @@ const EquipmentGauges = ({ position, device }) => {
   const fuelMax = Number(device?.attributes?.fuelMax) || 100;
 
   const fuelFraction = has('fuel') ? attributes.fuel / fuelMax : 0;
-  const fuelColor = fuelFraction < 0.1
-    ? theme.palette.error.main
-    : fuelFraction < 0.25
-      ? theme.palette.warning.main
-      : theme.palette.success.main;
+  const fuelColor =
+    fuelFraction < 0.1
+      ? theme.palette.error.main
+      : fuelFraction < 0.25
+        ? theme.palette.warning.main
+        : theme.palette.success.main;
 
   const coolant = attributes.coolantTemp;
-  const coolantColor = coolant >= 100
-    ? theme.palette.error.main
-    : coolant >= 90
-      ? theme.palette.warning.main
-      : theme.palette.info.main;
+  const coolantColor =
+    coolant >= 100
+      ? theme.palette.error.main
+      : coolant >= 90
+        ? theme.palette.warning.main
+        : theme.palette.info.main;
 
   return (
     <div className={classes.row}>
-      {has('rpm') && (
-        <RpmDial value={attributes.rpm} max={rpmMax} label={t('positionRpm')} />
-      )}
+      {has('rpm') && <RpmDial value={attributes.rpm} max={rpmMax} label={t('positionRpm')} />}
       <div className={classes.bars}>
         {has('fuel') && (
           <LevelBar

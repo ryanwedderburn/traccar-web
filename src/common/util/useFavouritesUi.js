@@ -18,8 +18,8 @@ const truthy = (value) => value === true || value === 'true';
 
 export default () => {
   const eventUi = useEventUi();
-  const granted = useSelector(
-    (state) => truthy(state.session.server?.attributes?.['ui.favourites']),
+  const granted = useSelector((state) =>
+    truthy(state.session.server?.attributes?.['ui.favourites']),
   );
   return eventUi || granted;
 };

@@ -236,51 +236,51 @@ const DeviceRow = ({ devices, index, style }) => {
         )}
         {followUi && (
           <Tooltip title={t('deviceFollow') || 'Follow'}>
-              <IconButton
-                className={classes.rowButton}
-                size="small"
-                aria-label={t('deviceFollow') || 'Follow'}
-                aria-pressed={followedId === item.id}
-                onClick={(event) => {
-                  event.stopPropagation();
-                  // Following implies looking at it, so make it the selection
-                  // too - but only on the way on, or switching it off would
-                  // nudge the map.
-                  if (followedId !== item.id) {
-                    dispatch(devicesActions.selectId(item.id));
-                  }
-                  dispatch(followActions.toggle(item.id));
-                }}
-              >
-                {followedId === item.id ? (
-                  <GpsFixedIcon fontSize="small" className={classes.followOn} />
-                ) : (
-                  <GpsNotFixedIcon fontSize="small" className={classes.neutral} />
-                )}
-              </IconButton>
+            <IconButton
+              className={classes.rowButton}
+              size="small"
+              aria-label={t('deviceFollow') || 'Follow'}
+              aria-pressed={followedId === item.id}
+              onClick={(event) => {
+                event.stopPropagation();
+                // Following implies looking at it, so make it the selection
+                // too - but only on the way on, or switching it off would
+                // nudge the map.
+                if (followedId !== item.id) {
+                  dispatch(devicesActions.selectId(item.id));
+                }
+                dispatch(followActions.toggle(item.id));
+              }}
+            >
+              {followedId === item.id ? (
+                <GpsFixedIcon fontSize="small" className={classes.followOn} />
+              ) : (
+                <GpsNotFixedIcon fontSize="small" className={classes.neutral} />
+              )}
+            </IconButton>
           </Tooltip>
         )}
         {favouritesUi && (
           <Tooltip title={t('sharedFavourite') || 'Favourite'}>
-              <IconButton
-                className={classes.rowButton}
-                size="small"
-                aria-label={t('sharedFavourite') || 'Favourite'}
-                aria-pressed={isFavourite(item.id)}
-                onClick={(event) => {
-                  // The whole row is a button that selects the device, so the
-                  // star has to stop the click before it gets there.
-                  event.stopPropagation();
-                  toggleFavourite(item.id);
-                }}
-              >
-                {isFavourite(item.id) ? (
-                  <StarIcon fontSize="small" className={classes.favouriteOn} />
-                ) : (
-                  <StarBorderIcon fontSize="small" className={classes.neutral} />
-                )}
-              </IconButton>
-            </Tooltip>
+            <IconButton
+              className={classes.rowButton}
+              size="small"
+              aria-label={t('sharedFavourite') || 'Favourite'}
+              aria-pressed={isFavourite(item.id)}
+              onClick={(event) => {
+                // The whole row is a button that selects the device, so the
+                // star has to stop the click before it gets there.
+                event.stopPropagation();
+                toggleFavourite(item.id);
+              }}
+            >
+              {isFavourite(item.id) ? (
+                <StarIcon fontSize="small" className={classes.favouriteOn} />
+              ) : (
+                <StarBorderIcon fontSize="small" className={classes.neutral} />
+              )}
+            </IconButton>
+          </Tooltip>
         )}
       </ListItemButton>
     </div>

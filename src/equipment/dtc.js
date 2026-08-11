@@ -76,9 +76,9 @@ const decodeDm1 = (value) => {
   if (!packed || Number.isNaN(packed)) {
     return null;
   }
-  const spn = (packed >>> 13) & 0x7FFFF;
-  const fmi = (packed >>> 8) & 0x1F;
-  const oc = packed & 0x7F;
+  const spn = (packed >>> 13) & 0x7ffff;
+  const fmi = (packed >>> 8) & 0x1f;
+  const oc = packed & 0x7f;
   if (!spn) {
     return null;
   }
