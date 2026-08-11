@@ -8,6 +8,7 @@ import MapFollow from '../map/main/MapFollow';
 import MapRouteCamera from '../map/main/MapRouteCamera';
 import MapAccuracy from '../map/main/MapAccuracy';
 import MapGeofence from '../map/MapGeofence';
+import MapFloorPlans from '../map/MapFloorPlans';
 import MapCurrentLocation from '../map/MapCurrentLocation';
 import PoiMap from '../map/main/PoiMap';
 import MapPadding from '../map/MapPadding';
@@ -53,6 +54,8 @@ const MainMap = ({ filteredPositions, selectedPosition, onEventsClick, routeFilt
     <>
       <MapView>
         <MapOverlay />
+        {/* Above overlays, below geofences and markers - see the component. */}
+        <MapFloorPlans />
         <MapGeofence filter={routeFilter} />
         <MapAccuracy positions={filteredPositions} />
         <MapLiveRoutes deviceIds={filteredPositions.map((p) => p.deviceId)} />
