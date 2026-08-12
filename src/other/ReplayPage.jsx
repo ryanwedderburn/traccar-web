@@ -24,6 +24,7 @@ import MapScale from '../map/MapScale';
 import BackIcon from '../common/components/BackIcon';
 import fetchOrThrow from '../common/util/fetchOrThrow';
 import MapOverlay from '../map/overlay/MapOverlay';
+import ReplayObdCard from './ReplayObdCard';
 
 const useStyles = makeStyles()((theme) => ({
   root: {
@@ -255,6 +256,7 @@ const ReplayPage = () => {
           </div>
         </Paper>
       </div>
+      {loaded && !showCard && <ReplayObdCard positions={positions} index={index} />}
       {showCard && index < positions.length && (
         <StatusCard
           deviceId={selectedDeviceId}
