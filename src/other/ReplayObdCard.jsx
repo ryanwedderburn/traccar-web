@@ -28,12 +28,12 @@ const useStyles = makeStyles()((theme) => ({
     [theme.breakpoints.down('md')]: {
       left: 0,
       right: 0,
-      bottom: 0,
+      // Sit on top of the bottom navigation bar, the same offset StatusCard
+      // and CollectionFab use. The bar owns the safe-area inset below it.
+      bottom: `${theme.dimensions.bottomBarHeight}px`,
       width: 'auto',
       margin: 0,
       borderRadius: 0,
-      // Keep the tiles clear of the iPhone home indicator.
-      paddingBottom: `calc(${theme.spacing(1)} + env(safe-area-inset-bottom))`,
     },
   },
   header: {
