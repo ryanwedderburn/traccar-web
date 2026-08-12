@@ -107,19 +107,43 @@ const MapCurrentLocation = () => {
       tracking = true;
       savePersistedState(ENABLED_KEY, true);
     };
+    /**
+     * 'trackuserlocationend' is NOT "the user turned the dot off". Maplibre
+     * also fires it when the user merely pans the map, which drops the
+     * control from active-lock to BACKGROUND: the dot stays up and the watch
+     * keeps running, only the camera stops following. Treating that as "off"
+     * wiped the consent key within seconds of every visit — panning is the
+     * first thing anyone does — which is why auto-start never happened.
+     *
+     * The two cases are told apart by 'userlocationlostfocus', which maplibre
+     * fires synchronously right after 'trackuserlocationend' in the pan case
+     * and not at all in the off case. So: schedule the forget for the next
+     * tick, and let lostfocus cancel it.
+     */
+    let endedTimeout;
     const ended = () => {
-      tracking = false;
-      window.localStorage.removeItem(ENABLED_KEY);
+      endedTimeout = setTimeout(() => {
+        tracking = false;
+        window.localStorage.removeItem(ENABLED_KEY);
+      }, 0);
     };
-    // Permission revoked in the OS after it was granted here, or a position
-    // that never arrives. Forget the preference rather than retrying into the
-    // same failure on every load.
-    const failed = () => {
-      tracking = false;
-      window.localStorage.removeItem(ENABLED_KEY);
+    const backgrounded = () => {
+      clearTimeout(endedTimeout);
+    };
+    // Forget the preference only for PERMISSION_DENIED (code 1) — the sticky
+    // case, where maplibre shuts the control off and retrying on every load
+    // would re-fail forever. Any other error (a timeout in a valley, one
+    // flaky fix) leaves the watch running and merely marks the dot stale;
+    // forgetting consent over it silently killed auto-start too.
+    const failed = (event) => {
+      if (event.code === 1) {
+        tracking = false;
+        window.localStorage.removeItem(ENABLED_KEY);
+      }
     };
     control.on('trackuserlocationstart', started);
     control.on('trackuserlocationend', ended);
+    control.on('userlocationlostfocus', backgrounded);
     control.on('error', failed);
 
     /**
@@ -136,18 +160,31 @@ const MapCurrentLocation = () => {
      * first is this case: the dot simply comes up, which is what "on by
      * default" was actually asking for.
      *
-     * Deferred a tick because the control has to be in the DOM before
-     * `trigger()` will do anything.
+     * Retried, not just deferred a tick: the control's setup is asynchronous
+     * (a permissions query), and `trigger()` before it completes is a silent
+     * no-op that returns false. One `setTimeout(0)` regularly loses that
+     * race, so keep trying briefly until the trigger lands — a successful one
+     * fires 'trackuserlocationstart' synchronously, which sets `tracking` and
+     * stops the loop.
      */
     let timeout;
     if (wasEnabled()) {
-      timeout = setTimeout(() => control.trigger(), 0);
+      let attempts = 0;
+      const autoStart = () => {
+        if (!tracking && !control.trigger() && attempts < 50) {
+          attempts += 1;
+          timeout = setTimeout(autoStart, 100);
+        }
+      };
+      timeout = setTimeout(autoStart, 0);
     }
 
     return () => {
       clearTimeout(timeout);
+      clearTimeout(endedTimeout);
       control.off('trackuserlocationstart', started);
       control.off('trackuserlocationend', ended);
+      control.off('userlocationlostfocus', backgrounded);
       control.off('error', failed);
       geolocateControl = null;
       tracking = false;
