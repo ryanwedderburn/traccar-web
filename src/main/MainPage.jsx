@@ -324,16 +324,25 @@ const MainPage = () => {
     setFilteredPositions,
   );
 
+  /* The map is rendered twice - desktop puts it behind the sidebar, phone puts
+     it in a grid cell shared with the device list - and the two used to repeat
+     their prop lists. They diverged the first time a prop was added: pairing
+     reached the phone and not the desktop, so a rider's phone and tracker drew
+     two markers on every Mac in the room while the card beside them correctly
+     described one competitor. One object, spread twice, so they cannot. */
+  const mapProps = {
+    filteredPositions,
+    pairedPositions,
+    selectedPosition,
+    onEventsClick,
+    routeFilter: activeRouteFilter,
+  };
+
   return (
     <div className={classes.root}>
       {desktop && (
         <Suspense fallback={null}>
-          <MainMap
-            filteredPositions={filteredPositions}
-            selectedPosition={selectedPosition}
-            onEventsClick={onEventsClick}
-            routeFilter={activeRouteFilter}
-          />
+          <MainMap {...mapProps} />
         </Suspense>
       )}
       <div className={classes.sidebar}>
@@ -395,13 +404,7 @@ const MainPage = () => {
               onClick={() => devicesOpen && setDevicesOpen(false)}
             >
               <Suspense fallback={null}>
-                <MainMap
-                  filteredPositions={filteredPositions}
-                  pairedPositions={pairedPositions}
-                  selectedPosition={selectedPosition}
-                  onEventsClick={onEventsClick}
-                  routeFilter={activeRouteFilter}
-                />
+                <MainMap {...mapProps} />
               </Suspense>
             </div>
           )}

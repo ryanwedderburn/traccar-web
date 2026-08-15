@@ -57,7 +57,13 @@ const MainMap = ({
 
   const [rulerActive, setRulerActive] = useState(false);
 
-  const markerPositions = pairedPositions || filteredPositions;
+  /* No fallback to filteredPositions. One used to be here, and it is why a
+     missing prop degraded silently to upstream's one-marker-per-device instead
+     of failing where anyone would notice. A guard that quietly disables a
+     feature is worse than the mistake it guards against - the same lesson as
+     MapRouteCamera's selection guard. pairPositions already returns its input
+     unchanged when there are no competitors, so there is nothing to defend. */
+  const markerPositions = pairedPositions;
 
   const onMarkerClick = useCallback(
     (_, deviceId) => {
