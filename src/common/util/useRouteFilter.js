@@ -91,11 +91,15 @@ export const matchesRouteFilter = (geofence, filter) => {
   // A geofence carrying no classes is not class-specific - a DSP serves
   // everyone on the day - so it survives any class selection rather than
   // being filtered out for lacking data.
-  const own = splitClasses(geofence);
+  // Compared case-insensitively. The hand-made geofences say "bronze" and an
+  // operator uploading a route types "Bronze"; neither is wrong, and a
+  // case-sensitive match would show both in the class selector as if they were
+  // two different classes.
+  const own = splitClasses(geofence).map((value) => value.toLowerCase());
   if (
     filter.classes?.length &&
     own.length &&
-    !own.some((value) => filter.classes.includes(value))
+    !own.some((value) => filter.classes.some((chosen) => chosen.toLowerCase() === value))
   ) {
     return false;
   }
@@ -120,7 +124,17 @@ export default (filter) => {
     const scoped = selectedEvent
       ? all.filter((item) => item.attributes?.event === selectedEvent)
       : [];
-    const classes = [...new Set(scoped.flatMap(splitClasses))].sort(compareClasses);
+    /* Deduplicated case-insensitively, keeping the first spelling seen, so a
+       route uploaded as "Bronze" beside sections tagged "bronze" does not put
+       the same class in the selector twice. */
+    const seen = new Map();
+    scoped.flatMap(splitClasses).forEach((value) => {
+      const key = value.toLowerCase();
+      if (!seen.has(key)) {
+        seen.set(key, value);
+      }
+    });
+    const classes = [...seen.values()].sort(compareClasses);
     const days = [
       ...new Set(
         scoped
