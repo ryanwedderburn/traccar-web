@@ -147,12 +147,30 @@ const relativeAge = (seconds) => {
  * and its own history; this is a view over both, which is why it can afford to
  * say where they disagree.
  */
+/**
+ * subjectRef is free text by design - "a rider, a vehicle, a consignment" - and
+ * the rider provisioning path has settled on a "rider:Name" convention. Showing
+ * that raw reads as a bug to anyone who did not write it, and normalising the
+ * stored data would only hold until the next importer picked its own prefix. So
+ * a leading type qualifier is dropped here, where it is a display concern.
+ */
+const subjectName = (subjectRef) => {
+  if (!subjectRef) {
+    return '';
+  }
+  const separator = subjectRef.indexOf(':');
+  // Only a short leading qualifier, so a name that happens to contain a colon
+  // survives intact.
+  return separator > 0 && separator <= 12 ? subjectRef.slice(separator + 1).trim() : subjectRef;
+};
+
 const CompetitorRows = ({ competitor, devices }) => {
   if (!competitor) {
     return null;
   }
 
-  const { label, subjectRef, state, deviceIds, ages, separationMetres } = competitor;
+  const { label, state, deviceIds, ages, separationMetres } = competitor;
+  const subjectRef = subjectName(competitor.subjectRef);
   const sources = (deviceIds || [])
     .map((id) => `${devices[id]?.name || `Device ${id}`} (${relativeAge(ages?.[id])})`)
     .join(' · ');
