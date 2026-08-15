@@ -8,6 +8,7 @@ import { useSearchParams } from 'react-router-dom';
 import DeviceList from './DeviceList';
 import BottomMenu from '../common/components/BottomMenu';
 import StatusCard from '../common/components/StatusCard';
+import useCompetitorPairing from './useCompetitorPairing';
 import { devicesActions, followActions } from '../store';
 import usePersistedState from '../common/util/usePersistedState';
 import EventsDrawer from './EventsDrawer';
@@ -121,6 +122,11 @@ const MainPage = () => {
   );
 
   const [filteredDevices, setFilteredDevices] = useState([]);
+
+  /* A rider's phone and their bike's tracker are one competitor. Resolved here
+     rather than inside the map so the status card cannot contradict it - the
+     two sources stay separate records throughout; this is only a view. */
+  const { positions: pairedPositions, pairing } = useCompetitorPairing(filteredPositions);
 
   const [keyword, setKeyword] = useState('');
   const [filter, setFilter] = usePersistedState('deviceFilter', {
@@ -391,6 +397,7 @@ const MainPage = () => {
               <Suspense fallback={null}>
                 <MainMap
                   filteredPositions={filteredPositions}
+                  pairedPositions={pairedPositions}
                   selectedPosition={selectedPosition}
                   onEventsClick={onEventsClick}
                   routeFilter={activeRouteFilter}
@@ -431,6 +438,7 @@ const MainPage = () => {
         <StatusCard
           deviceId={selectedDeviceId}
           position={selectedPosition}
+          competitor={pairing[selectedDeviceId]}
           onClose={() => dispatch(devicesActions.selectId(null))}
           desktopPadding={theme.dimensions.drawerWidthDesktop}
         />

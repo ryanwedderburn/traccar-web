@@ -39,6 +39,7 @@ import useKiosk from '../util/useKiosk';
 import useEquipmentUi from '../util/useEquipmentUi';
 import EquipmentGauges from './EquipmentGauges';
 import fetchOrThrow from '../util/fetchOrThrow';
+import { AGREE, APART, STALE } from '../util/competitorPairing';
 
 const useStyles = makeStyles()((theme, { desktopPadding }) => ({
   card: {
@@ -119,7 +120,69 @@ const StatusRow = ({ name, content }) => {
   );
 };
 
-const StatusCard = ({ deviceId, position, onClose, disableActions, desktopPadding = 0 }) => {
+/** "12 s ago", "4 min ago", "2 h ago". Short enough to sit in a table cell. */
+const relativeAge = (seconds) => {
+  if (seconds === undefined || seconds === null) {
+    return 'unknown';
+  }
+  if (seconds < 90) {
+    return `${seconds} s ago`;
+  }
+  if (seconds < 5400) {
+    return `${Math.round(seconds / 60)} min ago`;
+  }
+  return `${Math.round(seconds / 3600)} h ago`;
+};
+
+/**
+ * The competitor behind the marker.
+ *
+ * A rider's phone and their bike's tracker are one entry on the day, and the
+ * map draws them as one marker while they agree. That collapse hides something
+ * a steward may need, so the card puts it back: <b>every source is listed by
+ * name with its own age</b>, and the reading of the two is stated rather than
+ * left to be inferred.
+ *
+ * The underlying records are never merged. Each device keeps its own positions
+ * and its own history; this is a view over both, which is why it can afford to
+ * say where they disagree.
+ */
+const CompetitorRows = ({ competitor, devices }) => {
+  if (!competitor) {
+    return null;
+  }
+
+  const { label, subjectRef, state, deviceIds, ages, separationMetres } = competitor;
+  const sources = (deviceIds || [])
+    .map((id) => `${devices[id]?.name || `Device ${id}`} (${relativeAge(ages?.[id])})`)
+    .join(' · ');
+
+  let agreement = null;
+  if (state === AGREE) {
+    agreement = 'Together — both current';
+  } else if (state === APART) {
+    agreement = `${Math.round(separationMetres)} m apart — both current`;
+  } else if (state === STALE) {
+    agreement = 'One source is not current — shown from the most recent fix';
+  }
+
+  return (
+    <>
+      <StatusRow name="Competitor" content={subjectRef ? `${label} · ${subjectRef}` : label} />
+      {deviceIds?.length > 1 && <StatusRow name="Sources" content={sources} />}
+      {agreement && <StatusRow name="Agreement" content={agreement} />}
+    </>
+  );
+};
+
+const StatusCard = ({
+  deviceId,
+  position,
+  competitor,
+  onClose,
+  disableActions,
+  desktopPadding = 0,
+}) => {
   const { classes } = useStyles({ desktopPadding });
   const navigate = useNavigate();
   const dispatch = useDispatch();
@@ -132,7 +195,8 @@ const StatusCard = ({ deviceId, position, onClose, disableActions, desktopPaddin
 
   const shareDisabled = useSelector((state) => state.session.server.attributes.disableShare);
   const user = useSelector((state) => state.session.user);
-  const device = useSelector((state) => state.devices.items[deviceId]);
+  const devices = useSelector((state) => state.devices.items);
+  const device = devices[deviceId];
 
   const deviceImage = device?.attributes?.deviceImage;
 
@@ -205,6 +269,7 @@ const StatusCard = ({ deviceId, position, onClose, disableActions, desktopPaddin
                 <CardContent className={classes.content}>
                   <Table size="small" className={classes.table}>
                     <TableBody>
+                      <CompetitorRows competitor={competitor} devices={devices} />
                       {positionItems
                         .split(',')
                         .filter(

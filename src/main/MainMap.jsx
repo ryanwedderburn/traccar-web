@@ -26,7 +26,21 @@ import useFeatures from '../common/util/useFeatures';
 import useEventUi from '../common/util/useEventUi';
 import useFollowUi from '../common/util/useFollowUi';
 
-const MainMap = ({ filteredPositions, selectedPosition, onEventsClick, routeFilter }) => {
+/**
+ * @param filteredPositions every device's position, one each
+ * @param pairedPositions   what to actually draw: a competitor whose phone and
+ *                          tracker agree is one marker, not two. Computed in
+ *                          MainPage so the status card cannot disagree with the
+ *                          map. Falls back to filteredPositions on a stock host,
+ *                          where there are no competitors and nothing collapses.
+ */
+const MainMap = ({
+  filteredPositions,
+  pairedPositions,
+  selectedPosition,
+  onEventsClick,
+  routeFilter,
+}) => {
   const theme = useTheme();
   const dispatch = useDispatch();
 
@@ -43,6 +57,8 @@ const MainMap = ({ filteredPositions, selectedPosition, onEventsClick, routeFilt
 
   const [rulerActive, setRulerActive] = useState(false);
 
+  const markerPositions = pairedPositions || filteredPositions;
+
   const onMarkerClick = useCallback(
     (_, deviceId) => {
       dispatch(devicesActions.selectId(deviceId));
@@ -57,10 +73,13 @@ const MainMap = ({ filteredPositions, selectedPosition, onEventsClick, routeFilt
         {/* Above overlays, below geofences and markers - see the component. */}
         <MapFloorPlans />
         <MapGeofence filter={routeFilter} />
-        <MapAccuracy positions={filteredPositions} />
+        <MapAccuracy positions={markerPositions} />
+        {/* Trails stay per device. Two sources are never merged into one
+            recorded track - the blending is a view, and a rider's phone and
+            their bike's tracker each keep their own history. */}
         <MapLiveRoutes deviceIds={filteredPositions.map((p) => p.deviceId)} />
         <MapPositions
-          positions={filteredPositions}
+          positions={markerPositions}
           onMarkerClick={onMarkerClick}
           selectedPosition={selectedPosition}
           showStatus
@@ -72,7 +91,7 @@ const MainMap = ({ filteredPositions, selectedPosition, onEventsClick, routeFilt
         {/* After MapDefaultCamera, which owns the opening frame. */}
         {eventUi && <MapRouteCamera filter={routeFilter} />}
         <PoiMap />
-        <MapRuler positions={filteredPositions} onActiveChange={setRulerActive} />
+        <MapRuler positions={markerPositions} onActiveChange={setRulerActive} />
         {/* Only present while a rider is being watched - see the component. */}
         {followUi && <MapLocateFollowed />}
         {!features.disableEvents && (
