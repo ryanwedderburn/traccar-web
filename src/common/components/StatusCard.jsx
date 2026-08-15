@@ -120,10 +120,17 @@ const StatusRow = ({ name, content }) => {
   );
 };
 
-/** "12 s ago", "4 min ago", "2 h ago". Short enough to sit in a table cell. */
+/**
+ * "12 s ago", "4 min ago", "2 h ago". Short enough to sit in a table cell.
+ *
+ * A dash where there is no age, rather than a word. The client can be missing a
+ * device's position for reasons that have nothing to do with the device - the
+ * map-favourites filter hands the map a single device - so "unknown" read as a
+ * claim about the tracker when it was a claim about the filter.
+ */
 const relativeAge = (seconds) => {
   if (seconds === undefined || seconds === null) {
-    return 'unknown';
+    return '—';
   }
   if (seconds < 90) {
     return `${seconds} s ago`;

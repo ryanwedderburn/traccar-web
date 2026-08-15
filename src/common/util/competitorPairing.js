@@ -144,6 +144,11 @@ export const pairPositions = (positions, byDevice, options = {}) => {
 
     // A competitor with only one device reporting is just a device. It still
     // gets a pairing record, because the card wants the race number either way.
+    /* Only one of this competitor's devices has a position here. That is not
+       always because the other is silent - the map-favourites filter can hand
+       us a single device - so no claim is made about why. Ages are recorded
+       for what we actually have, and the card renders the rest as unknown
+       rather than inventing a state for them. */
     if (members.length < 2) {
       rendered.push(members[0]);
       pairing[members[0].deviceId] = {
@@ -152,6 +157,7 @@ export const pairPositions = (positions, byDevice, options = {}) => {
         state: null,
         deviceIds: competitor?.deviceIds || [members[0].deviceId],
         shown: [members[0].deviceId],
+        ages: { [members[0].deviceId]: Math.round((now - fixedAt(members[0])) / 1000) },
       };
       return;
     }
