@@ -84,6 +84,11 @@ const LoginPage = () => {
   }));
 
   const [failed, setFailed] = useState(false);
+  /* Normally null, and then the generic "invalid username or password" stands.
+     Carries a specific reason only when the server gave one worth repeating -
+     today that is the wrong-host refusal, where the credentials were right and
+     saying "invalid password" would send somebody round the same loop twice. */
+  const [failure, setFailure] = useState(null);
 
   const [email, setEmail] = usePersistedState('loginEmail', '');
   const [password, setPassword] = useState('');
@@ -122,6 +127,7 @@ const LoginPage = () => {
   const handlePasswordLogin = async (event) => {
     event.preventDefault();
     setFailed(false);
+    setFailure(null);
     try {
       const query = `email=${encodeURIComponent(email)}&password=${encodeURIComponent(password)}`;
       const response = await fetch('/api/session', {
@@ -137,6 +143,16 @@ const LoginPage = () => {
         navigate(target, { replace: true });
       } else if (response.status === 401 && response.headers.get('WWW-Authenticate') === 'TOTP') {
         setCodeEnabled(true);
+      } else if (response.status === 403) {
+        /* The password was right and the address was not. See
+           HostBranding.allows - an account can be bound to a hostname, and a
+           rider who mistyped it needs to be told where to go, not told their
+           password is wrong. */
+        const body = await response.json().catch(() => null);
+        setFailure(body?.error || 'This account cannot sign in on this address');
+        setFailed(true);
+        setPassword('');
+        return;
       } else {
         throw Error(await response.text());
       }
@@ -224,7 +240,7 @@ const LoginPage = () => {
               autoComplete="email"
               autoFocus={!email}
               onChange={(e) => setEmail(e.target.value)}
-              helperText={failed && 'Invalid username or password'}
+              helperText={failed && (failure || 'Invalid username or password')}
             />
             <TextField
               required
