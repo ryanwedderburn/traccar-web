@@ -22,6 +22,7 @@ import useEventUi from '../common/util/useEventUi';
 import useFavouritesUi from '../common/util/useFavouritesUi';
 import useKiosk from '../common/util/useKiosk';
 import SupportWidget from '../common/components/SupportWidget';
+import CoverageNotice from './components/CoverageNotice';
 import useRouteFilter from '../common/util/useRouteFilter';
 
 const MainMap = lazy(() => import('./MainMap'));
@@ -436,6 +437,14 @@ const MainPage = () => {
         App.jsx, which kiosk mode deliberately left alone.
       */}
       <SupportWidget />
+      {/*
+        Why the rider being watched has stopped moving - but only when the
+        answer is known. States the age of the position and that the ground is
+        known to hold positions back, and lets the viewer join them. See the
+        component: it never claims a dead zone, because a flat battery looks
+        identical from here.
+      */}
+      <CoverageNotice />
       <EventsDrawer open={eventsOpen} onClose={() => setEventsOpen(false)} />
       {selectedDeviceId && (
         <StatusCard

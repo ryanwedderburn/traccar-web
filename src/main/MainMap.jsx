@@ -9,6 +9,7 @@ import MapRouteCamera from '../map/main/MapRouteCamera';
 import MapAccuracy from '../map/main/MapAccuracy';
 import MapGeofence from '../map/MapGeofence';
 import MapFloorPlans from '../map/MapFloorPlans';
+import MapCoverage from '../map/MapCoverage';
 import MapCurrentLocation from '../map/MapCurrentLocation';
 import PoiMap from '../map/main/PoiMap';
 import MapPadding from '../map/MapPadding';
@@ -76,6 +77,9 @@ const MainMap = ({
     <>
       <MapView>
         <MapOverlay />
+        {/* Context, under everything: coverage is where positions arrive late,
+            and a rider's marker must never be obscured by it. */}
+        <MapCoverage />
         {/* Above overlays, below geofences and markers - see the component. */}
         <MapFloorPlans />
         <MapGeofence filter={routeFilter} />
