@@ -34,9 +34,25 @@ const MapDefaultCamera = ({ filteredPositions }) => {
         });
         setInitialized(true);
       } else {
-        const coordinates = (filteredPositions || Object.values(positions)).map((item) =>
-          toMapCoordinates(item.longitude, item.latitude),
-        );
+        /* EMPTY IS NOT ABSENT, and `filteredPositions || …` treats it as though
+           it were: an empty array is truthy, so a viewer whose filter matches
+           nothing got zero coordinates, no branch ran, `initialized` stayed
+           false, and the map sat wherever MapLibre constructed it - zoom 0, the
+           whole world.
+
+           That is the DEFAULT state for a new spectator. Favourites start empty
+           and `mapFavouritesOnly` narrows the map to them, so the first thing
+           every QR scan at a start venue produced was a view of the planet.
+           Invisible to anyone testing in a browser they had used before, which
+           is why it survived: localStorage carried a filter that happened to
+           match something.
+
+           Falling back for the CAMERA only. What is drawn stays filtered - the
+           question here is "where should the map open", and the honest answer
+           when the filter matches nothing is "where the fleet is", not "the
+           Atlantic". */
+        const framing = filteredPositions?.length ? filteredPositions : Object.values(positions);
+        const coordinates = framing.map((item) => toMapCoordinates(item.longitude, item.latitude));
         if (coordinates.length > 1) {
           const bounds = coordinates.reduce(
             (bounds, item) => bounds.extend(item),
