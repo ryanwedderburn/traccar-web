@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef, useCallback } from 'react';
-import { IconButton, Paper, Slider, Toolbar, Typography } from '@mui/material';
+import { IconButton, Menu, MenuItem, Paper, Slider, Toolbar, Typography } from '@mui/material';
 import { makeStyles } from 'tss-react/mui';
 import TuneIcon from '@mui/icons-material/Tune';
 import DownloadIcon from '@mui/icons-material/Download';
@@ -94,6 +94,7 @@ const ReplayPage = () => {
   const [playing, setPlaying] = useState(false);
   const [loading, setLoading] = useState(false);
   const [filterOpen, setFilterOpen] = useState(false);
+  const [downloadAnchor, setDownloadAnchor] = useState(null);
 
   const loaded = Boolean(from && to && !loading && positions.length);
 
@@ -168,9 +169,10 @@ const ReplayPage = () => {
     [t],
   );
 
-  const handleDownload = () => {
+  const handleDownload = (format) => {
+    setDownloadAnchor(null);
     const query = new URLSearchParams({ deviceId: selectedDeviceId, from, to });
-    window.location.assign(`/api/positions/kml?${query.toString()}`);
+    window.location.assign(`/api/positions/${format}?${query.toString()}`);
   };
 
   return (
@@ -201,9 +203,20 @@ const ReplayPage = () => {
             </Typography>
             {loaded && (
               <>
-                <IconButton onClick={handleDownload}>
+                <IconButton onClick={(e) => setDownloadAnchor(e.currentTarget)}>
                   <DownloadIcon />
                 </IconButton>
+                <Menu
+                  anchorEl={downloadAnchor}
+                  open={Boolean(downloadAnchor)}
+                  onClose={() => setDownloadAnchor(null)}
+                >
+                  {['gpx', 'kml', 'kmz', 'csv'].map((format) => (
+                    <MenuItem key={format} onClick={() => handleDownload(format)}>
+                      {`${t('reportExport')} (${format.toUpperCase()})`}
+                    </MenuItem>
+                  ))}
+                </Menu>
                 <IconButton edge="end" onClick={() => setFilterOpen((open) => !open)}>
                   <TuneIcon />
                 </IconButton>
