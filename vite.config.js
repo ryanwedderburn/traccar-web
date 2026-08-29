@@ -62,8 +62,23 @@ export default defineConfig(() => ({
         // console and the server never asked. No React route ends in .html, so
         // this cannot shadow one.
         //
-        // See docs/ONBOARD-STATION.md and docs/ONBOARD-REMOTE.md.
-        navigateFallbackDenylist: [/^\/api/, /^\/[\w-]+\.html$/],
+        // `/live` IS LISTED BY NAME, against the rule above, because it has no
+        // shape to match. It is a single fixed servlet path
+        // (org.traccar.web.LiveLoginServlet, mounted in WebModule) rather than
+        // a family of files, and an anchored exact match cannot shadow a React
+        // route the way a broad prefix could.
+        //
+        // FOUND 2026-08-29, and it predates the login-page button that exposed
+        // it. THE PRINTED SIGNAGE POINTS AT /live. Any spectator whose phone had
+        // ever loaded this origin already had the worker installed, so scanning
+        // the sign served them the app shell and a blank screen - the server
+        // never asked, nothing in the console. It worked in a private window,
+        // which is the signature this file's own comment describes and which
+        // had already cost a day once.
+        //
+        // See docs/ONBOARD-STATION.md, docs/ONBOARD-REMOTE.md and
+        // docs/ONBOARD-SPECTATOR.md.
+        navigateFallbackDenylist: [/^\/api/, /^\/[\w-]+\.html$/, /^\/live$/],
         globPatterns: ['**/*.{js,css,html,woff,woff2,mp3}'],
       },
       manifest: {
