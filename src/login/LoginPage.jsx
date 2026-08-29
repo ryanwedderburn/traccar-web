@@ -115,6 +115,12 @@ const LoginPage = () => {
     const value = state.session.server.attributes?.['ui.disableLoginReset'];
     return value === true || value === 'true';
   });
+  /* OURS. Truthy only when this host's branding names a live account. Read
+     defensively: attributes is absent before /api/server resolves, and a
+     login page that throws is a login page nobody can use. */
+  const liveEnabled = useSelector(
+    (state) => Boolean(state.session.server.attributes?.liveUser),
+  );
   const openIdEnabled = useSelector((state) => state.session.server.openIdEnabled);
   const openIdForced = useSelector(
     (state) => state.session.server.openIdEnabled && state.session.server.openIdForce,
@@ -228,6 +234,38 @@ const LoginPage = () => {
       <div className={classes.container}>
         {useMediaQuery(theme.breakpoints.down('lg')) && (
           <LogoImage color={theme.palette.primary.main} />
+        )}
+        {/*
+          OURS. Watch the race without an account, on a host that has one.
+
+          ABOVE THE CREDENTIAL FIELDS ON PURPOSE. Nearly everyone reaching this
+          page at an event is a spectator who has no login and never will - a
+          rider's family sent a link, or someone typed the domain off a banner.
+          Putting this under the form would have them read, and fail to use,
+          two fields first.
+
+          `liveUser` is already public: HostBranding.apply merges the host's
+          branding entry into the Server attributes and /api/server is
+          @PermitAll, which is what makes this a purely client-side change. It
+          is a USER ID, never a password - see LiveLoginServlet, which refuses
+          unless the target account is readonly, non-administrator and kiosk.
+
+          A FULL NAVIGATION, not react-router. /live is a servlet on the same
+          origin, not a route in this app: it establishes the session server-side
+          and redirects to /. Calling navigate() would look for a route that does
+          not exist and land on the map with no session.
+
+          A host without liveUser shows nothing at all, which is the same
+          opt-in-per-host rule the servlet itself applies.
+        */}
+        {liveEnabled && (
+          <Button
+            onClick={() => { window.location.href = '/live'; }}
+            variant="contained"
+            color="primary"
+          >
+            {t('loginLive')}
+          </Button>
         )}
         {!openIdForced && (
           <>
