@@ -172,10 +172,11 @@ const WaypointsDialog = ({ open, onClose, routeFilter }) => {
                           <Chip size="small" label={waypointLabel(waypoint.type)} />
                         )}
                         {/*
-                          Classes are shown, never filtered on. An untagged
-                          point serves everyone, so a tag only appears where
-                          someone deliberately set one - which is exactly the
-                          spectator point crossed by a single class.
+                          Shown as well as filtered on, since 2026-08-29. The
+                          chip explains why a point is in the list on this class
+                          selection - an untagged point serves everyone and
+                          carries none, so a chip only appears where somebody
+                          deliberately scoped it.
                         */}
                         {waypoint.classes.map((name) => (
                           <Chip key={name} size="small" variant="outlined" label={name} />

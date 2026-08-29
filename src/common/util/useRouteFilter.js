@@ -73,20 +73,28 @@ export const matchesRouteFilter = (geofence, filter) => {
     return false;
   }
 
-  // Day and class filter ROUTES. A fixed point is where it is regardless of
-  // which day or class is selected, so a place survives every combination once
-  // its event matches.
+  // PLACES ARE FILTERED TOO, since 2026-08-29.
   //
-  // This is the same rule the POI list already applies (see waypoints.js), and
-  // it has to be, or the two disagree: Music Box tagged with a class would be
-  // listed under POI and offer directions while being absent from the map that
-  // is supposed to show you where it is. The reasoning is also the same -
-  // a spectator following Bronze who learns Gold alone crosses at Free Fall
-  // Pass may well go and watch anyway, and nobody can act on the point they
-  // were never shown.
-  if (isPlace(geofence)) {
-    return true;
-  }
+  // They used to return true here, exempt from day and class - the argument
+  // being that a spectator following Bronze might still want to know where Gold
+  // crosses. Ryan overruled it: "I think all map content should be filter
+  // driven. This tool is not for marshal management."
+  //
+  // That is the stronger position. A filter the user set is a statement of what
+  // they want to see, and a control that silently does not apply to some of the
+  // content is worse than one that applies to all of it - you cannot tell from
+  // the map whether a point is absent because it was filtered or because nobody
+  // entered it. The old behaviour also made the day and class fields on a
+  // waypoint inert: settable, stored, and acting on nothing.
+  //
+  // NOTHING DISAPPEARS BY DEFAULT. An untagged geofence still survives every
+  // selection - see the two checks below, both of which pass when the geofence
+  // carries no value. Graham's 30 imported crossings have no day or class set,
+  // so they behave exactly as before until somebody tags them, at which point
+  // the tag starts meaning something.
+  //
+  // waypoints.js applies the same two checks in the same order. They must stay
+  // in step or the POI list offers directions to a point the map is not drawing.
 
   // A geofence carrying no classes is not class-specific - a DSP serves
   // everyone on the day - so it survives any class selection rather than

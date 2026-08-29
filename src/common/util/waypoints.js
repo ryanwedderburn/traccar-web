@@ -99,18 +99,32 @@ export const mapsDirectionsUrl = (latitude, longitude) =>
 /**
  * The navigable points for the selected event, ready to list.
  *
- * Filtered by event only. Day and class are deliberately *not* applied:
+ * Filtered by event, day and class - the same three the map applies.
  *
- * - A fixed point is where it is regardless of which day is selected. Crew
- *   driving on Friday still want Saturday's DSP.
- * - Classes are shown as a label instead. A spectator point crossed only by
- *   Gold is worth knowing about even if you are following Bronze - that is
- *   often the best place to stand. Filtering it out means nobody ever learns
- *   it exists, because a hidden row leaves no trace.
+ * Day and class used to be deliberately skipped here, on the argument that crew
+ * driving on Friday still want Saturday's DSP and that a Bronze spectator might
+ * want to stand where Gold crosses. Ryan overruled it on 2026-08-29: "I think
+ * all map content should be filter driven. This tool is not for marshal
+ * management."
+ *
+ * THE TWO CHECKS BELOW MIRROR matchesRouteFilter, in the same order, and must
+ * stay in step with it. A list that offers directions to a point the map is not
+ * drawing is the exact failure the `hide` filter above was added to fix, in a
+ * different costume.
+ *
+ * Nothing disappears by default: an untagged waypoint carries no day and no
+ * classes, and both checks pass when the value is absent.
  */
 export default (filter) => {
   const geofences = useSelector((state) => state.geofences.items);
   const event = filter?.event;
+  const day = filter?.day;
+  /* Joined into a string for the dependency array. `filter.classes` is a fresh
+     array on every render, so passing it directly would recompute the list on
+     every keystroke elsewhere in the app - and passing nothing at all would
+     leave the POI list showing the previous class selection, which is the
+     stale-filter bug this whole change exists to remove. */
+  const classesKey = (filter?.classes || []).join(',');
 
   return useMemo(
     () =>
@@ -123,6 +137,22 @@ export default (filter) => {
         .filter((item) => !item.attributes?.hide)
         .filter((item) => !event || item.attributes?.event === event)
         .filter((item) => !ROUTE_TYPES.has(item.attributes?.type))
+        // Class, case-insensitively, and only when the waypoint declares one -
+        // matchesRouteFilter's rule exactly: no classes means it serves
+        // everyone rather than nobody.
+        .filter((item) => {
+          const own = splitClasses(item).map((value) => value.toLowerCase());
+          return (
+            !filter?.classes?.length ||
+            !own.length ||
+            own.some((value) => filter.classes.some((chosen) => chosen.toLowerCase() === value))
+          );
+        })
+        // Day, compared as strings, and only when the waypoint declares one.
+        .filter((item) => {
+          const day = item.attributes?.day;
+          return !filter?.day || !day || String(day) === String(filter.day);
+        })
         .map((item) => ({
           id: item.id,
           name: item.name,
@@ -135,6 +165,6 @@ export default (filter) => {
           (a, b) =>
             (TYPE_RANK[a.type] ?? 99) - (TYPE_RANK[b.type] ?? 99) || a.name.localeCompare(b.name),
         ),
-    [geofences, event],
+    [geofences, event, day, classesKey],
   );
 };
