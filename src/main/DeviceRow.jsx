@@ -85,7 +85,7 @@ const useStyles = makeStyles()((theme) => ({
   },
 }));
 
-const DeviceRow = ({ devices, index, style }) => {
+const DeviceRow = ({ devices, competitors, index, style }) => {
   const { classes } = useStyles();
   const dispatch = useDispatch();
   const t = useTranslation();
@@ -128,7 +128,28 @@ const DeviceRow = ({ devices, index, style }) => {
     return item[field];
   };
 
-  const primaryValue = resolveFieldValue(devicePrimary);
+  /* THE RACE NUMBER, WHERE THERE IS ONE.
+   *
+   * The number lives on the claim, never on the device, so a device given a
+   * number it was not named for reads as its own name in this list - ROA-1395
+   * rather than 926 - and a spectator hunting a race number cannot find it.
+   * Provisioned riders hide the problem: provision-riders.py names them
+   * "922 Route Tester1", so the number is in the string by luck of creation.
+   *
+   * PREFIXED, NOT SUBSTITUTED. The device name is what an operator reads off
+   * the hardware and what every other screen shows; replacing it would trade
+   * one lookup failure for another. And nothing is written - this is display
+   * only, so the number cannot drift out of step with the claim the way a name
+   * does (see docs/COMPETITORS.md on the name being stored twice).
+   *
+   * Only when the name does not already start with it, so the provisioned
+   * riders do not read "922 · 922 Route Tester1". */
+  const label = competitors?.[item.id]?.label;
+  const primaryRaw = resolveFieldValue(devicePrimary);
+  const primaryValue =
+    label && devicePrimary === 'name' && !String(item.name || '').startsWith(String(label))
+      ? `${label} · ${primaryRaw}`
+      : primaryRaw;
   const secondaryValue = resolveFieldValue(deviceSecondary);
 
   const secondaryText = () => {
