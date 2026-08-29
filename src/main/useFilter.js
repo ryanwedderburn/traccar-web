@@ -3,6 +3,7 @@ import { useSelector } from 'react-redux';
 import dayjs from 'dayjs';
 import useTenantScope from '../common/util/useTenantScope';
 import useKiosk from '../common/util/useKiosk';
+import useCompetitors from '../common/util/useCompetitors';
 
 /* Same parse-don't-coerce rule as useKiosk: a value typed by hand or set by a
    script arrives as the STRING "true", and the string "false" is every bit as
@@ -29,6 +30,15 @@ export default (
   /* Which product this host is. Off unless `tenantScope` is set for the host,
      and returns "everything" on any failure - see useTenantScope. */
   const { inScope } = useTenantScope();
+
+  /* SEARCHABLE BY RACE NUMBER, because the list now shows one.
+     DeviceRow prefixes a device with its number when the name does not already
+     carry it - "926 · ROA-1395" - and a list that displays a value the search
+     box cannot find is worse than one that never showed it: the number is on
+     screen, typing it returns nothing, and the operator concludes the search is
+     broken. The label lives on the claim, so it is not among the device columns
+     below and has to be added deliberately. */
+  const competitors = useCompetitors();
 
   /* TEST RIDERS ARE HIDDEN FROM KIOSK ACCOUNTS ONLY.
    *
@@ -89,7 +99,9 @@ export default (
       )
       .filter((device) => {
         const lowerCaseKeyword = keyword.toLowerCase();
-        return [device.name, device.uniqueId, device.phone, device.model, device.contact].some(
+        const competitor = competitors[device.id];
+        return [device.name, device.uniqueId, device.phone, device.model, device.contact,
+          competitor?.label, competitor?.subjectRef].some(
           (s) => s && s.toLowerCase().includes(lowerCaseKeyword),
         );
       });
@@ -147,6 +159,7 @@ export default (
     devices,
     positions,
     inScope,
+    competitors,
     /* Without this the effect keeps whichever value kiosk had when it last ran.
        A session change - signing in as the spectator account to check what they
        see - would leave test riders showing, or hidden, from the wrong one. */
