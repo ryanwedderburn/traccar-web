@@ -101,16 +101,30 @@ const MapRouteCamera = ({ filter }) => {
       .filter((geofence) => !geofence.attributes.hide)
       .filter((geofence) => matchesRouteFilter(geofence, filter));
 
-    // Frame the ROUTES, not everything drawn. Fixed points survive every day
-    // and class now, so including them would mean the camera barely moves
-    // between selections - the whole event's waypoints would always be in
-    // shot. Fall back to the points only when the selection has no routes at
-    // all, which beats not moving.
+    // Frame the ROUTES, and ONLY the routes.
+    //
+    // This used to fall back to framing the places when a selection had no
+    // routes, on the reasoning that it "beats not moving" - a selector that
+    // appears to do nothing being the exact problem this component was built to
+    // solve (see docs/CONTEXT.md, 2026-08-09).
+    //
+    // Reversed 2026-08-29. Ryan, twice: "this nonsense auto-zooming crap is
+    // back". Framing the places means fitting the WHOLE EVENT's waypoints -
+    // 35 of them spread across a district - so a selection with no routes threw
+    // the camera out to a view of nothing in particular. That is not better
+    // than not moving; it is worse, because it destroys whatever the viewer had
+    // set up and replaces it with a frame that answers no question.
+    //
+    // The original concern still stands and is answered elsewhere rather than
+    // ignored: RouteFilter's summary line now says "no routes" when a selection
+    // matches none, so the control reports its result instead of the camera
+    // acting one out. No control quietly does nothing - it just says so in
+    // words now, which is cheaper than a camera move.
     const routes = matching.filter((geofence) => !isPlace(geofence));
-    const subject = routes.length ? routes : matching;
-    if (!subject.length) {
+    if (!routes.length) {
       return;
     }
+    const subject = routes;
 
     const bounds = new maplibregl.LngLatBounds();
     subject.forEach((geofence) => {

@@ -13,7 +13,8 @@ import RouteIcon from '@mui/icons-material/Route';
 import ExpandMoreIcon from '@mui/icons-material/ExpandMore';
 import ExpandLessIcon from '@mui/icons-material/ExpandLess';
 import { makeStyles } from 'tss-react/mui';
-import useRouteFilter from '../../common/util/useRouteFilter';
+import { useSelector } from 'react-redux';
+import useRouteFilter, { matchesRouteFilter, isPlace } from '../../common/util/useRouteFilter';
 import usePersistedState from '../../common/util/usePersistedState';
 
 /**
@@ -112,6 +113,26 @@ const RouteFilter = ({ filter, setFilter }) => {
 
   const [open, setOpen] = usePersistedState('routeFilterOpen', false);
 
+  /* WHETHER THIS SELECTION DRAWS ANY ROUTES AT ALL.
+     MapRouteCamera used to answer this with the camera - framing the event's
+     waypoints when a selection had no routes, so that the selector visibly did
+     something. That threw the view out to the whole district and was reverted
+     on 2026-08-29. The concern behind it was sound though, and this is where it
+     is answered instead: the control says what it found rather than the map
+     acting it out. Same predicate the map draws with, so the two cannot
+     disagree. */
+  const geofences = useSelector((state) => state.geofences.items);
+  const anyRoutes = useMemo(
+    () =>
+      Object.values(geofences).some(
+        (geofence) =>
+          !geofence.attributes?.hide &&
+          !isPlace(geofence) &&
+          matchesRouteFilter(geofence, filter),
+      ),
+    [geofences, filter],
+  );
+
   // Reads back what is applied, in the order the controls appear. "All tracks"
   // rather than an empty string when nothing is set - a blank value looks like
   // a control that failed to load.
@@ -124,8 +145,14 @@ const RouteFilter = ({ filter, setFilter }) => {
     if (filter.classes?.length) {
       parts.push(filter.classes.join(', '));
     }
+    /* Last, and only when true. A spectator who picks Gold on a day Gold does
+       not ride needs to know the map is empty on purpose - otherwise the
+       absence of lines reads as the platform having lost them. */
+    if (!anyRoutes) {
+      parts.push('no routes');
+    }
     return parts.join(' · ');
-  }, [events.length, filter.event, filter.day, filter.classes]);
+  }, [events.length, filter.event, filter.day, filter.classes, anyRoutes]);
 
   if (!events.length) {
     return null;
