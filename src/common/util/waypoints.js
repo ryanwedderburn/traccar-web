@@ -51,6 +51,8 @@ const TYPE_LABELS = {
   tp: 'TP',
   hq: 'HQ',
   spectator: 'Spectator',
+  crossing: 'Crossing',
+  crossingUnder: 'Under road',
   info: 'Info',
 };
 
