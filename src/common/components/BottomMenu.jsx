@@ -22,7 +22,7 @@ import SupportAgentIcon from '@mui/icons-material/SupportAgent';
 
 import { sessionActions } from '../../store';
 import { useTranslation } from './LocalizationProvider';
-import { useRestriction } from '../util/permissions';
+import { useRestriction, useAdministrator } from '../util/permissions';
 import { nativePostMessage } from './NativeInterface';
 import useWaypoints from '../util/waypoints';
 import useEventUi from '../util/useEventUi';
@@ -39,6 +39,30 @@ const BottomMenu = ({ routeFilter }) => {
 
   const readonly = useRestriction('readonly');
   const disableReports = useRestriction('disableReports');
+
+  /*
+   * The admin tools are one link away, and were not reachable from here at all.
+   *
+   * manage.html links BACK to the live map in its own header; nothing pointed
+   * forward, so the only route from the viewer to the event setup was a typed
+   * URL. Ryan, 2026-08-30: "enable easy flicking between standard frontend and
+   * custom backend. It's a gap." A one-way link is the half of a round trip
+   * that gets built first and then looks finished.
+   *
+   * ADMINISTRATOR, because that is what the page actually needs. The claim
+   * operations behind Competitors are `checkAdmin` on MetricsResource
+   * (CAPABILITIES.md: platform work is not grantable), so a non-admin who
+   * followed this would reach a page whose every panel answers 403. An entry
+   * point that leads somewhere unusable is worse than no entry point - it reads
+   * as the platform being broken rather than the account being wrong.
+   *
+   * NOT gated on a host attribute, unlike eventUi/equipmentUi/liveUser. Those
+   * switch behaviour per hostname; this is one file in web.override, served by
+   * the same Jetty to every host on the install, so there is no host where an
+   * administrator has it and another where they do not. A flag here would be a
+   * setting that is always the same value.
+   */
+  const administrator = useAdministrator();
   /*
    * Cosmetic sibling of the account-level restriction, in upstream's
    * ui.disable* naming. The restriction revokes the report API - which the
@@ -109,6 +133,28 @@ const BottomMenu = ({ routeFilter }) => {
   const handleAccount = () => {
     setAnchorEl(null);
     navigate(`/settings/user/${user.id}`);
+  };
+
+  /*
+   * A FULL NAVIGATION, not navigate(). manage.html is served by
+   * OverrideFileFilter and is not a route this app owns, so react-router would
+   * match nothing and leave the user on a blank screen with the URL changed -
+   * which looks exactly like the page being down.
+   *
+   * This is the same lesson as the /live button on the login page, and top-level
+   * *.html is already in vite.config.js's navigateFallbackDenylist, so the
+   * service worker hands the request to the server instead of answering it with
+   * the precached index.html. Adding a link to an override page without that
+   * entry is the bug that has now been introduced three times; see
+   * docs/README.md.
+   *
+   * SAME TAB on purpose. The return trip already exists - manage.html's header
+   * carries a "Live map" link - so a new tab would leave two copies of the app
+   * open and a back button that does nothing.
+   */
+  const handleManage = () => {
+    setAnchorEl(null);
+    window.location.href = '/manage.html';
   };
 
   const handleLogout = async () => {
@@ -277,6 +323,18 @@ const BottomMenu = ({ routeFilter }) => {
         <MenuItem onClick={handleAccount}>
           <Typography color="textPrimary">{t('settingsUser')}</Typography>
         </MenuItem>
+        {/*
+          Literal English, by the same rule as the Fleet tab and the support
+          label above: this names one page in this fork, not a platform concept
+          with a translation. An invented l10n key renders empty in every locale
+          but English, and an empty menu item is a worse outcome than an
+          untranslated one.
+        */}
+        {administrator && (
+          <MenuItem onClick={handleManage}>
+            <Typography color="textPrimary">Event setup</Typography>
+          </MenuItem>
+        )}
         <MenuItem onClick={handleLogout}>
           <Typography color="error">{t('loginLogout')}</Typography>
         </MenuItem>
