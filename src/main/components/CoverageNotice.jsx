@@ -27,19 +27,30 @@ const minutes = (seconds) => {
 };
 
 /**
- * Tells a viewer why the rider they are watching has stopped moving.
+ * Tells a viewer why the thing they are watching has stopped moving.
  *
- * THE WHOLE POINT IS WHAT IT DOES NOT SAY. It never claims the rider is in a
- * dead zone, because it cannot know that: a phone that is off, out of battery,
- * or in a pocket that lost GPS looks identical from here. It states two facts
- * and lets the viewer join them -
+ * THE WHOLE POINT IS WHAT IT DOES NOT SAY. It never claims a dead zone,
+ * because it cannot know that: a phone that is off, out of battery, or in a
+ * pocket that lost GPS looks identical from here. It states two facts and lets
+ * the viewer join them -
  *
- *   "Last position 14 minutes ago. Positions from here usually arrive late."
+ *   "Last position 14 minutes ago. Updates from this area can be delayed."
  *
  * The first is measured. The second is corroborated ground: several
  * independent devices had to agree before that cell was published. Asserting
  * the conclusion instead would be the failure this project keeps producing,
  * except in front of the public and about somebody's relative on a mountain.
+ *
+ * TWO CONSTRAINTS ON THE WORDING, both from Ryan, 2026-08-30:
+ *
+ * - **No "rider".** The same banner serves vehicles, marshals and sweep crews,
+ *   and this component has no idea which it is looking at. "The current
+ *   position" is the only subject it can name truthfully.
+ * - **No blame.** "Delayed" describes what the data does; it does not diagnose
+ *   why, and in particular does not tell a spectator that a named sponsor's
+ *   network is poor here. Earlier drafts said positions "usually arrive late"
+ *   from here, which reads as a verdict on coverage we have not earned and
+ *   would not want to publish if we had.
  *
  * SILENT WHEN THE RIDER IS SOMEWHERE FINE. A stale position outside a known
  * zone gets no notice at all: the honest reading there is "we do not know why",
@@ -83,8 +94,8 @@ const CoverageNotice = () => {
     <Slide direction="up" in>
       <div className={classes.root}>
         <Alert severity="info" variant="filled" icon={false}>
-          {`Last position ${minutes(age)} ago. Positions from here usually arrive late,
-            so this rider may be further along than shown.`}
+          {`Last position ${minutes(age)} ago. Updates from this area can be delayed,
+            so the current position may be further along.`}
         </Alert>
       </div>
     </Slide>

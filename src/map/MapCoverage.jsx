@@ -150,7 +150,10 @@ const MapCoverage = () => {
         container.className = 'maplibregl-ctrl maplibregl-ctrl-group';
         button = document.createElement('button');
         button.type = 'button';
-        button.title = 'Poor coverage areas';
+        /* Neutral by the same rule as CoverageNotice's text - the layer shows
+           where updates arrive late, which is not the same as grading anyone's
+           network in front of spectators. */
+        button.title = 'Areas with delayed updates';
         button.className = `${classes.button}${visibleRef.current ? ' active' : ''}`;
         button.onclick = () => {
           visibleRef.current = !visibleRef.current;
