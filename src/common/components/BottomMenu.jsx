@@ -19,6 +19,7 @@ import PersonIcon from '@mui/icons-material/Person';
 import ExitToAppIcon from '@mui/icons-material/ExitToApp';
 import PlaceIcon from '@mui/icons-material/Place';
 import SupportAgentIcon from '@mui/icons-material/SupportAgent';
+import PhoneAndroidIcon from '@mui/icons-material/PhoneAndroid';
 
 import { sessionActions } from '../../store';
 import { useTranslation } from './LocalizationProvider';
@@ -27,6 +28,8 @@ import { nativePostMessage } from './NativeInterface';
 import useWaypoints from '../util/waypoints';
 import useEventUi from '../util/useEventUi';
 import useEquipmentUi from '../util/useEquipmentUi';
+import useSetupUi from '../util/useSetupUi';
+import useKiosk from '../util/useKiosk';
 import WaypointsDialog from './WaypointsDialog';
 import useSupportWidget from '../util/useSupportWidget';
 import { useAttributePreference } from '../util/preferences';
@@ -90,6 +93,25 @@ const BottomMenu = ({ routeFilter }) => {
   const eventUi = useEventUi();
   const equipmentUi = useEquipmentUi();
   const waypoints = useWaypoints(routeFilter);
+
+  /*
+   * "Set up my phone" - the way a rider finds the tracking wizard.
+   *
+   * WITHOUT THIS THERE IS NO DISCOVERY. A rider signs in, lands on the map,
+   * sees their own device sitting offline, and nothing anywhere tells them that
+   * /setup.html exists. The wizard could be perfect and still never be reached.
+   *
+   * A RIDER, and the three conditions each exclude somebody real:
+   *   readonly        - an organiser or admin is not setting up a competitor's
+   *                     handset from their own signed-in browser, and offering
+   *                     it to them is how the wrong phone gets configured.
+   *   !administrator  - same, and an admin has no device of their own to set up.
+   *   !kiosk          - the spectator account is readonly and non-admin too, but
+   *                     has no tracker; the button would lead nowhere.
+   */
+  const setupUi = useSetupUi();
+  const kiosk = useKiosk();
+  const showSetup = setupUi && readonly && !administrator && !kiosk;
 
   // Roofus. The widget's own floating launcher is hidden by SupportWidget and
   // driven from here instead, so it has one fixed home rather than a button
@@ -219,6 +241,20 @@ const BottomMenu = ({ routeFilter }) => {
       case 'poi':
         setWaypointsOpen(true);
         break;
+      /*
+       * A FULL PAGE LOAD, not navigate(). setup.html is served from
+       * web.override by Jetty and is not a React route - handing it to the
+       * router produces a blank screen and no error, which is the worst
+       * possible failure for the one button a rider needs.
+       *
+       * Same origin, so the session cookie goes with it and the page resolves
+       * the rider's own device through /api/setup/mine. No identifier in the
+       * URL: that value is a write credential, and this is exactly the path
+       * that stops it being one.
+       */
+      case 'setup':
+        window.location.assign('/setup.html');
+        break;
       case 'support':
         toggleSupport();
         break;
@@ -294,6 +330,19 @@ const BottomMenu = ({ routeFilter }) => {
             }
             value="support"
           />
+        )}
+        {/*
+          Literal English, by the same rule as the Fleet tab and the support
+          label: this names one page in this fork, not a platform concept with a
+          translation, and an invented l10n key renders empty in every locale
+          but English.
+
+          Placed before Reports deliberately. A rider whose phone is not yet
+          reporting has nothing to read a report about, and this is the button
+          that fixes that.
+        */}
+        {showSetup && (
+          <BottomNavigationAction label="Set up" icon={<PhoneAndroidIcon />} value="setup" />
         )}
         {!disableReports && !reportsHidden && (
           <BottomNavigationAction
