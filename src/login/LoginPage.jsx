@@ -115,6 +115,24 @@ const LoginPage = () => {
     const value = state.session.server.attributes?.['ui.disableLoginReset'];
     return value === true || value === 'true';
   });
+  /*
+   * OURS. Hide the live-tracking button for a host that still has a working
+   * `/live`. The two are deliberately separable: before an event, spectators
+   * must not walk in off the login page while riders are still being
+   * onboarded, but the QR link has to stay testable - and removing `liveUser`
+   * to hide the button would 404 the servlet and take the QR with it.
+   *
+   * COSMETIC ONLY, and that is the whole point. Anyone who has the URL can
+   * still reach `/live`. If the requirement is ever to actually close the
+   * door, remove `liveUser` from the host's entry; this flag is for the
+   * period where the door should be open but unadvertised.
+   *
+   * parse-don't-coerce, same as `ui.disableLoginReset` above.
+   */
+  const liveDisabled = useSelector((state) => {
+    const value = state.session.server.attributes?.['ui.disableLoginLive'];
+    return value === true || value === 'true';
+  });
   /* OURS. Truthy only when this host's branding names a live account. Read
      defensively: attributes is absent before /api/server resolves, and a
      login page that throws is a login page nobody can use. */
@@ -258,7 +276,7 @@ const LoginPage = () => {
           A host without liveUser shows nothing at all, which is the same
           opt-in-per-host rule the servlet itself applies.
         */}
-        {liveEnabled && (
+        {liveEnabled && !liveDisabled && (
           <Button
             onClick={() => { window.location.href = '/live'; }}
             variant="contained"
