@@ -11,6 +11,7 @@ import {
   IconButton,
   Tooltip,
   InputAdornment,
+  Typography,
 } from '@mui/material';
 import CountryFlag from 'react-country-flag';
 import { makeStyles } from 'tss-react/mui';
@@ -33,6 +34,7 @@ import {
   nativePostMessage,
 } from '../common/components/NativeInterface';
 import LogoImage from './LogoImage';
+import useSponsors from '../common/util/useSponsors';
 import { useCatch } from '../reactHelper';
 import QrCodeDialog from '../common/components/QrCodeDialog';
 import fetchOrThrow from '../common/util/fetchOrThrow';
@@ -63,6 +65,54 @@ const useStyles = makeStyles()((theme) => ({
   },
   link: {
     cursor: 'pointer',
+  },
+  /*
+   * The sponsor block. Ryan, 2026-09-01: "login page should probably only
+   * contain the title sponsor which is currently Lenderu."
+   *
+   * NOT A LINK, deliberately. A link on a login page is a trap: somebody who
+   * came to sign in, taps away and comes back has lost their place, and on a
+   * phone may have to retype credentials. The tap-through lives on the map's
+   * sponsor sheet, where leaving costs nothing.
+   *
+   * HIDDEN WHEN THERE IS NO ROOM. Measured on real handsets: an iPhone 12 mini
+   * has ~150 CSS px of slack below the button, and the /live button - which
+   * sits ABOVE the fields and pushes the whole stack down - takes ~55 of it
+   * once liveUser is set. That leaves 80-90px, which is one row and no more.
+   * A short or landscape viewport gets nothing rather than a login button
+   * pushed off the bottom: this is the existing "shown only where there is
+   * something to show" rule (POI, Roofus, /live) extended to "shown only where
+   * there is room to show it". A rider who cannot reach LOGIN because of a
+   * sponsor is the worst possible version of this feature.
+   */
+  sponsor: {
+    display: 'none',
+    [`@media (min-height: 600px)`]: {
+      display: 'flex',
+      flexDirection: 'column',
+      alignItems: 'center',
+      gap: theme.spacing(1),
+      marginTop: theme.spacing(3),
+    },
+  },
+  sponsorCaption: {
+    /* The caption is what keeps the ROA mark the hero. Two logos on one page
+       with no framing read as a partnership of equals, which is not what is
+       being sold. Muted and small, so it frames rather than competes. */
+    color: theme.palette.text.secondary,
+    letterSpacing: '0.06em',
+    textTransform: 'uppercase',
+  },
+  sponsorLogo: {
+    /* Height caps the hierarchy: roughly a third of the ROA mark, so nobody
+       confuses which is the event and which is the sponsor. Width follows the
+       aspect ratio - Lenderu is 77x34, so 28px tall is 63px wide. No border,
+       no chip, no glow: the ROA mark already has one and should stay the only
+       thing that does. */
+    height: 28,
+    width: 'auto',
+    maxWidth: '70%',
+    display: 'block',
   },
   flag: {
     marginRight: theme.spacing(1),
@@ -129,6 +179,11 @@ const LoginPage = () => {
    *
    * parse-don't-coerce, same as `ui.disableLoginReset` above.
    */
+  /* Title sponsor only. The full partner board - roughly eighteen marks for
+     2026 - lives on the map's sponsor sheet, which is the only surface with
+     room for it. One non-wrapping row is all this page can hold. */
+  const { title: sponsor } = useSponsors();
+
   const liveDisabled = useSelector((state) => {
     const value = state.session.server.attributes?.['ui.disableLoginLive'];
     return value === true || value === 'true';
@@ -136,9 +191,7 @@ const LoginPage = () => {
   /* OURS. Truthy only when this host's branding names a live account. Read
      defensively: attributes is absent before /api/server resolves, and a
      login page that throws is a login page nobody can use. */
-  const liveEnabled = useSelector(
-    (state) => Boolean(state.session.server.attributes?.liveUser),
-  );
+  const liveEnabled = useSelector((state) => Boolean(state.session.server.attributes?.liveUser));
   const openIdEnabled = useSelector((state) => state.session.server.openIdEnabled);
   const openIdForced = useSelector(
     (state) => state.session.server.openIdEnabled && state.session.server.openIdForce,
@@ -278,7 +331,9 @@ const LoginPage = () => {
         */}
         {liveEnabled && !liveDisabled && (
           <Button
-            onClick={() => { window.location.href = '/live'; }}
+            onClick={() => {
+              window.location.href = '/live';
+            }}
             variant="contained"
             color="primary"
           >
@@ -373,6 +428,30 @@ const LoginPage = () => {
                 {t('loginReset')}
               </Link>
             )}
+          </div>
+        )}
+        {/*
+          LAST IN THE FORM CONTAINER, so it sits below everything including the
+          register and reset links when a host has them. Renders nothing at all
+          when no host has declared a title sponsor, which keeps stock Traccar
+          and every other tenant exactly as they were.
+
+          Literal English on the caption, by the same rule as the Fleet tab and
+          the support label: this is per-event chrome, and an invented l10n key
+          renders empty in every locale but English.
+        */}
+        {sponsor?.logo && (
+          <div className={classes.sponsor}>
+            <Typography variant="caption" className={classes.sponsorCaption}>
+              Proudly sponsored by
+            </Typography>
+            {/*
+              alt is the sponsor's name so a screen reader says who it is, and
+              a broken path shows the name rather than a silent empty box -
+              which is the difference between "they fixed the URL" and "nobody
+              noticed for three weeks".
+            */}
+            <img className={classes.sponsorLogo} src={sponsor.logo} alt={sponsor.name} />
           </div>
         )}
       </div>
