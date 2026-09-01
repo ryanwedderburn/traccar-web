@@ -16,10 +16,10 @@ import SettingsIcon from '@mui/icons-material/Settings';
 import MapIcon from '@mui/icons-material/Map';
 import SpaceDashboardIcon from '@mui/icons-material/SpaceDashboard';
 import PersonIcon from '@mui/icons-material/Person';
-import ExitToAppIcon from '@mui/icons-material/ExitToApp';
 import PlaceIcon from '@mui/icons-material/Place';
 import SupportAgentIcon from '@mui/icons-material/SupportAgent';
 import PhoneAndroidIcon from '@mui/icons-material/PhoneAndroid';
+import StorefrontIcon from '@mui/icons-material/Storefront';
 
 import { sessionActions } from '../../store';
 import { useTranslation } from './LocalizationProvider';
@@ -31,6 +31,8 @@ import useEquipmentUi from '../util/useEquipmentUi';
 import useSetupUi from '../util/useSetupUi';
 import useKiosk from '../util/useKiosk';
 import WaypointsDialog from './WaypointsDialog';
+import SponsorsDialog from './SponsorsDialog';
+import useSponsors from '../util/useSponsors';
 import useSupportWidget from '../util/useSupportWidget';
 import { useAttributePreference } from '../util/preferences';
 
@@ -66,6 +68,28 @@ const BottomMenu = ({ routeFilter }) => {
    * setting that is always the same value.
    */
   const administrator = useAdministrator();
+
+  /*
+   * WHERE A READONLY ACCOUNT GOES TO WATCH THE WHOLE FIELD.
+   *
+   * A competitor signs in to their self-test account, proves their tracking
+   * works, and then wants to see the race. Their account shows only their own
+   * devices, so they have to get across to the spectator view - and until now
+   * the only control offered was Log out, which is the MECHANISM rather than
+   * the thing they want. "Log out" also reads as destructive to a rider who is
+   * worried about losing their code.
+   *
+   * LiveLoginServlet compares the session's user id against the live user's,
+   * so a competitor's session is not "already signed in": SessionHelper
+   * .userLogin invalidates it and recreates it as the kiosk account. Hitting
+   * /live while signed in as anybody simply switches them across, which is why
+   * this needs no logout and no credentials.
+   *
+   * Same host attribute the login page's button uses, so a host without /live
+   * offers neither. Ryan, 2026-08-29: "I don't want to link to public viewer
+   * account just yet."
+   */
+  const liveEnabled = useSelector((state) => Boolean(state.session.server.attributes?.liveUser));
   /*
    * Cosmetic sibling of the account-level restriction, in upstream's
    * ui.disable* naming. The restriction revokes the report API - which the
@@ -82,6 +106,7 @@ const BottomMenu = ({ routeFilter }) => {
 
   const [anchorEl, setAnchorEl] = useState(null);
   const [waypointsOpen, setWaypointsOpen] = useState(false);
+  const [sponsorsOpen, setSponsorsOpen] = useState(false);
 
   // Shown only where there is somewhere to go, the same way RouteFilter hides
   // itself until the data carries an event. An install that has never run a
@@ -111,6 +136,20 @@ const BottomMenu = ({ routeFilter }) => {
    */
   const setupUi = useSetupUi();
   const kiosk = useKiosk();
+
+  /*
+   * THE SPONSORS ITEM IS KIOSK-ONLY, and that is a decision rather than a
+   * default. Ryan, 2026-09-01. Spectators are who a sponsor is buying; the
+   * people using this as a tool - riders checking their own tracking, crew,
+   * administrators - are not, and an admin bar already carries six items on
+   * roa.wlab.co.za before anything is added to it.
+   *
+   * SHOWN ONLY WHERE THERE IS SOMETHING TO SHOW, like POI and Roofus: a host
+   * with no `sponsors` in its branding gets no button, so stock Traccar and
+   * every other tenant are untouched.
+   */
+  const { sponsors, title: titleSponsor } = useSponsors();
+  const showSponsors = kiosk && sponsors.length > 0;
   const showSetup = setupUi && readonly && !administrator && !kiosk;
 
   // Roofus. The widget's own floating launcher is hidden by SupportWidget and
@@ -179,6 +218,15 @@ const BottomMenu = ({ routeFilter }) => {
     window.location.href = '/manage.html';
   };
 
+  /* A FULL NAVIGATION, like the Event setup entry and the login page's button:
+     /live is a servlet, not a route this app owns, so react-router would match
+     nothing. Top-level *.html and /live are both in navigateFallbackDenylist,
+     so the service worker passes it to the server. */
+  const handleWatchLive = () => {
+    setAnchorEl(null);
+    window.location.href = '/live';
+  };
+
   const handleLogout = async () => {
     setAnchorEl(null);
 
@@ -240,6 +288,11 @@ const BottomMenu = ({ routeFilter }) => {
         break;
       case 'poi':
         setWaypointsOpen(true);
+        break;
+      /* An action, not a place, like POI and Roofus: currentSelection() never
+         returns 'sponsors', so the Map tab stays highlighted behind it. */
+      case 'sponsors':
+        setSponsorsOpen(true);
         break;
       /*
        * A FULL PAGE LOAD, not navigate(). setup.html is served from
@@ -358,20 +411,73 @@ const BottomMenu = ({ routeFilter }) => {
             value="settings"
           />
         )}
-        {readonly ? (
+        {/*
+          Sponsors takes the fourth slot on a kiosk bar - Map, POI, Roofus,
+          Sponsors - so the title sponsor's wordmark keeps its full width. Five
+          items squeezes it to ~41px and it reads as a compressed afterthought.
+          Ryan, 2026-09-01: "I do agree four is better than five for sure."
+
+          THE ICON IS THE SPONSOR'S LOGO, following Roofus, which already puts a
+          logo here instead of a glyph. Not the same crop though: Roofus is a
+          round badge and survives a circle, while a horizontal wordmark cropped
+          that way is an unreadable fragment. Contained, not cropped.
+        */}
+        {showSponsors && (
           <BottomNavigationAction
-            label={t('loginLogout')}
-            icon={<ExitToAppIcon />}
-            value="logout"
+            label="Sponsors"
+            icon={
+              titleSponsor?.logo ? (
+                <img
+                  src={titleSponsor.logo}
+                  alt=""
+                  style={{ width: 50, height: 22, objectFit: 'contain', display: 'block' }}
+                />
+              ) : (
+                <StorefrontIcon />
+              )
+            }
+            value="sponsors"
           />
-        ) : (
+        )}
+        {/*
+          ONE PERSON ICON, where readonly used to get a bare Logout button and
+          everybody else got Account. The two bars now behave the same way, and
+          a readonly account gains somewhere to put Watch live tracking - the
+          thing a testing rider actually wants, rather than Log out, which is
+          the mechanism and reads as destructive to somebody worried about
+          losing their code.
+
+          HIDDEN WHEN THE SPONSOR SHEET IS CARRYING LOGOUT, which is the only
+          way the kiosk bar stays at four. An earlier version of this claimed
+          the menu itself freed a slot; it does not - it replaces the Logout
+          button one for one. The slot comes from moving logout into the sheet,
+          and so this appears again the moment there is no sheet to hold it: a
+          kiosk host with no sponsors keeps its Logout button exactly as before.
+        */}
+        {!showSponsors && (
           <BottomNavigationAction label={t('settingsUser')} icon={<PersonIcon />} value="account" />
         )}
       </BottomNavigation>
       <Menu anchorEl={anchorEl} open={Boolean(anchorEl)} onClose={() => setAnchorEl(null)}>
-        <MenuItem onClick={handleAccount}>
-          <Typography color="textPrimary">{t('settingsUser')}</Typography>
-        </MenuItem>
+        {/* A readonly account has no settings page to open, so the entry that
+            leads there is not offered to them - an entry that goes somewhere
+            unusable is worse than no entry, the same rule as Event setup. */}
+        {!readonly && (
+          <MenuItem onClick={handleAccount}>
+            <Typography color="textPrimary">{t('settingsUser')}</Typography>
+          </MenuItem>
+        )}
+        {/* Literal English, by the same rule as Fleet and the support label:
+            per-event chrome, and an invented l10n key renders empty in every
+            locale but English. */}
+        {/* Not offered to the kiosk account itself: it IS the live view, so the
+            entry would lead where they already are. Only the accounts that see
+            a narrower map - a competitor's own devices - have somewhere to go. */}
+        {readonly && !kiosk && liveEnabled && (
+          <MenuItem onClick={handleWatchLive}>
+            <Typography color="textPrimary">Watch live tracking</Typography>
+          </MenuItem>
+        )}
         {/*
           Literal English, by the same rule as the Fleet tab and the support
           label above: this names one page in this fork, not a platform concept
@@ -392,6 +498,14 @@ const BottomMenu = ({ routeFilter }) => {
         open={waypointsOpen}
         onClose={() => setWaypointsOpen(false)}
         routeFilter={routeFilter}
+      />
+      {/* onLogout only when this sheet is the only place logout lives - see the
+          bar item above. Passing it unconditionally would put a second logout
+          in front of accounts that already have one in their menu. */}
+      <SponsorsDialog
+        open={sponsorsOpen}
+        onClose={() => setSponsorsOpen(false)}
+        onLogout={showSponsors ? handleLogout : undefined}
       />
     </Paper>
   );
