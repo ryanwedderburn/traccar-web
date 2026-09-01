@@ -1,6 +1,6 @@
 import { useMemo } from 'react';
 import { useSelector } from 'react-redux';
-import { splitClasses } from './useRouteFilter';
+import { splitClasses, splitDays } from './useRouteFilter';
 
 /**
  * "Get me there" for the fixed points of a race - start, finish, DSP, USP,
@@ -148,10 +148,13 @@ export default (filter) => {
             own.some((value) => filter.classes.some((chosen) => chosen.toLowerCase() === value))
           );
         })
-        // Day, compared as strings, and only when the waypoint declares one.
+        // Day, as strings, and only when the waypoint declares one - a LIST, the
+        // same as classes above and the same as matchesRouteFilter. These two
+        // must stay in step or the POI list offers directions to a point the
+        // map is not drawing.
         .filter((item) => {
-          const day = item.attributes?.day;
-          return !filter?.day || !day || String(day) === String(filter.day);
+          const days = splitDays(item);
+          return !filter?.day || !days.length || days.some((value) => value === String(filter.day));
         })
         .map((item) => ({
           id: item.id,

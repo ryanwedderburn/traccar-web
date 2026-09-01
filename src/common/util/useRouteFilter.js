@@ -18,6 +18,32 @@ export const splitClasses = (geofence) =>
     .map((value) => value.trim())
     .filter(Boolean);
 
+/**
+ * The days a geofence belongs to. A LIST, exactly like classes.
+ *
+ * Ryan, 2026-09-01: "POI (road crossings, spec spots, and even merch spot)
+ * could and do belong to multiple days. E.g. Friday DSP is only Fri. Music Box
+ * start/finish is Thu (gold) to Sat (everyone), Thaba Bosiu is start for other
+ * classes on Thu going to Music box."
+ *
+ * THIS USED TO BE A SCALAR while classes beside it was already a list, and the
+ * comment at the comparison even said "Same reasoning for day" - so a start
+ * venue used on three days could not be expressed at all, and neither could a
+ * merch stand open all week. The only reason nothing had broken is that an
+ * absent day survives every filter, and nothing had been day-tagged yet: the
+ * fault would have appeared the moment somebody started tagging properly, by
+ * hiding points rather than by failing.
+ *
+ * `day` stays the attribute name rather than becoming `days`, so every
+ * geofence already carrying a single day keeps working untouched - a one-item
+ * list is just a list. Existing data needs no migration.
+ */
+export const splitDays = (geofence) =>
+  String(geofence.attributes?.day || '')
+    .split(',')
+    .map((value) => value.trim())
+    .filter(Boolean);
+
 // Classes have a difficulty order, hardest first, and it is not alphabetical.
 // Ranked by tier rather than by name so branding still works: Lite is Senqu's
 // Iron, and Atom is Romaniacs' entry tier below both. Anything unrecognised
@@ -112,9 +138,11 @@ export const matchesRouteFilter = (geofence, filter) => {
     return false;
   }
 
-  // Same reasoning for day.
-  const day = geofence.attributes?.day;
-  if (filter.day && day && String(day) !== String(filter.day)) {
+  // Same reasoning for day, and now the same shape too - see splitDays. A
+  // geofence declaring no day is not day-specific and survives any selection;
+  // one declaring several matches if ANY of them is the chosen day.
+  const days = splitDays(geofence);
+  if (filter.day && days.length && !days.some((value) => value === String(filter.day))) {
     return false;
   }
 
@@ -143,14 +171,10 @@ export default (filter) => {
       }
     });
     const classes = [...seen.values()].sort(compareClasses);
-    const days = [
-      ...new Set(
-        scoped
-          .map((item) => item.attributes?.day)
-          .filter(Boolean)
-          .map(String),
-      ),
-    ].sort(compareDays);
+    /* Flattened, because one geofence can now name several days. Without the
+       flatMap a "3,4,5" venue would offer itself as a single day option called
+       "3,4,5" - present in the selector, matching nothing. */
+    const days = [...new Set(scoped.flatMap(splitDays))].sort(compareDays);
 
     return { events, classes, days };
   }, [geofences, selectedEvent]);
