@@ -76,9 +76,41 @@ export default defineConfig(() => ({
         // which is the signature this file's own comment describes and which
         // had already cost a day once.
         //
+        // FOUND AGAIN 2026-08-31, and the 2026-08-29 fix is what hid it. The
+        // denylist is matched against `url.pathname + url.search`, not the
+        // pathname (workbox-routing/NavigationRoute.js:85) - so `/^\/live$/`
+        // covers `/live` and nothing else. `/live?follow=904` fell straight
+        // through to the app shell, exactly as the bare path had, and the `$`
+        // that was added to keep the entry from shadowing a React route is
+        // what excluded the query form.
+        //
+        // WHICH IS THE FORM THAT IS ACTUALLY SHARED. `/live` alone is the
+        // signage; `/live?follow=<race number>` is every link sent to a family
+        // or dropped in the SOS group, and it is the one that was blank. The
+        // bare path being fixed is precisely why nobody caught it: the thing
+        // that was tested worked.
+        //
+        // `(\?|$)` and not a bare prefix: `/live` exactly, or `/live` followed
+        // by a query string. Still cannot shadow a React route - none is
+        // `/live` and none begins `/live?` - and it now carries `?follow=`,
+        // `?token=` and any combination of them.
+        //
         // See docs/ONBOARD-STATION.md, docs/ONBOARD-REMOTE.md and
         // docs/ONBOARD-SPECTATOR.md.
-        navigateFallbackDenylist: [/^\/api/, /^\/[\w-]+\.html$/, /^\/live$/],
+        // The override-page entry carries the same `$` and the same defect:
+        // `/setup.html?id=ROA26-074-3Z759SRK` is the rider onboarding link,
+        // printed into the PDFs by scripts/make-onboarding-pdfs.py and built by
+        // onboard.html, and it is a query-string form of a denylisted path.
+        //
+        // Latent rather than live today, and only by luck of hostname: setup
+        // and enrol are served from the ingest host, which routes unmatched
+        // paths to the OsmAnd listener and never serves this bundle, so no
+        // worker is installed on that origin to intercept them
+        // (deploy/edge/sites/ingest.caddy). The day one of these pages is
+        // linked with a query on the main host, it is blank. Fixed here rather
+        // than left as a note, because the two live instances of this bug cost
+        // a day each and neither was visible from any screen.
+        navigateFallbackDenylist: [/^\/api/, /^\/[\w-]+\.html(\?|$)/, /^\/live(\?|$)/],
         globPatterns: ['**/*.{js,css,html,woff,woff2,mp3}'],
       },
       manifest: {
