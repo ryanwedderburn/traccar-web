@@ -199,7 +199,26 @@ const LoginPage = () => {
   const [codeEnabled, setCodeEnabled] = useState(false);
 
   const [announcementShown, setAnnouncementShown] = useState(false);
-  const announcement = useSelector((state) => state.session.server.announcement);
+  /*
+   * PER HOST FIRST, then the server-wide field.
+   *
+   * Upstream's `announcement` is one string for the whole installation, which is
+   * fine for one deployment and wrong for this one: a message aimed at ROA's
+   * riders would greet every other tenant on their own login page too.
+   *
+   * HostBranding merges the requesting host's entry into /api/server's
+   * attributes, so `announcement` in a hostBranding entry is per hostname by
+   * construction - the same convention as sponsors, liveUser and ui.setup.
+   * Nothing changes for a host that does not set one.
+   *
+   * Added 2026-09-03, for "live tracking opens for race week" while the
+   * spectator account is disabled during onboarding. That is also why it sits
+   * on the login page rather than on a page of its own: /live redirects here
+   * when it cannot sign anybody in, so this is the one surface that has to say
+   * it, and the one surface to change back afterwards.
+   */
+  const announcement = useSelector((state) => state.session.server.attributes?.announcement
+    || state.session.server.announcement);
 
   const handlePasswordLogin = async (event) => {
     event.preventDefault();
