@@ -85,9 +85,37 @@ const SupportWidget = () => {
    * `md` is 900. It only needs to agree with `theme.breakpoints`, which decides
    * where BottomMenu moves into the desktop sidebar.
    */
+  /**
+   * THIS STYLE IS NEVER REMOVED, for exactly the reason the script above is
+   * never removed - and the two must agree or the launcher escapes.
+   *
+   * Seen on production 2026-09-05, reported as "Roofus floating logo is
+   * appearing randomly... seems to be triggered by a logout event". It was.
+   * This component renders inside `MainPage`, so signing out unmounts it. The
+   * old cleanup then took the stylesheet away while `button.eiw-bubble` - which
+   * widget.js appended to `document.body` and which nothing here removes -
+   * stayed exactly where it was. With the `display: none` gone it simply became
+   * visible again, bottom-right, on the login page: on top of the host
+   * announcement and over the close button a rider needs to dismiss it.
+   *
+   * The asymmetry was the whole bug. The script effect had already worked out
+   * that the widget's DOM outlives this component and documented why it must
+   * not be torn down; the style effect was written as an ordinary mount/unmount
+   * pair and quietly undid that. **A rule that hides something permanent has to
+   * be permanent too.**
+   *
+   * So: reuse the tag by id and rewrite its contents when `eiWidgetCss`
+   * changes, rather than creating and destroying it. Idempotent on remount,
+   * still live-updatable from the admin UI, and there is no moment in the
+   * page's life when the launcher is un-hidden.
+   */
   useEffect(() => {
-    const style = document.createElement('style');
-    style.id = STYLE_ID;
+    let style = document.getElementById(STYLE_ID);
+    if (!style) {
+      style = document.createElement('style');
+      style.id = STYLE_ID;
+      document.head.appendChild(style);
+    }
     style.textContent = `
       ${LAUNCHER_SELECTOR} { display: none !important; }
       @media (max-width: 899.95px) {
@@ -95,8 +123,6 @@ const SupportWidget = () => {
       }
       ${css || ''}
     `;
-    document.head.appendChild(style);
-    return () => style.remove();
   }, [css]);
 
   return null;
