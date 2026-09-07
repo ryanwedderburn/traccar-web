@@ -110,7 +110,38 @@ export default defineConfig(() => ({
         // linked with a query on the main host, it is blank. Fixed here rather
         // than left as a note, because the two live instances of this bug cost
         // a day each and neither was visible from any screen.
-        navigateFallbackDenylist: [/^\/api/, /^\/[\w-]+\.html(\?|$)/, /^\/live(\?|$)/],
+        // FOUND A THIRD TIME 2026-09-07, same failure, a path nobody had
+        // thought of: `/traccar-client.apk`. setup.html now offers the Traccar
+        // Client APK to riders whose phones have no Play Store - every Huawei
+        // sold since 2019 - and on a phone with the worker installed the
+        // download produced a blank page and no file. Blank screen, empty
+        // console, nothing in the server log, exactly as described above.
+        //
+        // AND IT WAS "VERIFIED" WITH curl, WHICH CANNOT SEE IT. `curl -I`
+        // returned 200 with the right content-type and length, because curl
+        // has no service worker. That is the "works in a private window"
+        // signature this file has now warned about three times, walked into
+        // once more by the person reading the warning.
+        //
+        // `gpx-loader.apk` had the same defect all along and had simply never
+        // been opened on a phone that had loaded the origin. Both are covered
+        // by one entry, so a fourth APK cannot reintroduce it.
+        //
+        // The rule generalises: ANY path this origin serves that is not a React
+        // route belongs here. HTML pages, /live, /api and now binaries. A
+        // downloadable file is the clearest possible case - there is no route
+        // it could shadow, and the cost of omitting it is a rider who cannot
+        // install the app at all.
+        // ONE ENTRY FOR BOTH EXTENSIONS, and the array stays on ONE LINE.
+        // scripts/test-sw-denylist.mjs parses the real array out of this file
+        // with `/^\s*navigateFallbackDenylist:\s*(\[.*\])/m` - a wrapped array
+        // is a parse failure, which that script correctly treats as a failure
+        // rather than a skip. Splitting `.html` and `.apk` into two entries ran
+        // to 111 characters against prettier's printWidth of 100, so the
+        // formatter would have wrapped it and broken the test. `(html|apk)`
+        // fits, covers both, and means a future extension is a two-character
+        // edit rather than a new entry to forget.
+        navigateFallbackDenylist: [/^\/api/, /^\/[\w-]+\.(html|apk)(\?|$)/, /^\/live(\?|$)/],
         globPatterns: ['**/*.{js,css,html,woff,woff2,mp3}'],
       },
       manifest: {
