@@ -141,7 +141,21 @@ export default defineConfig(() => ({
         // formatter would have wrapped it and broken the test. `(html|apk)`
         // fits, covers both, and means a future extension is a two-character
         // edit rather than a new entry to forget.
-        navigateFallbackDenylist: [/^\/api/, /^\/[\w-]+\.(html|apk)(\?|$)/, /^\/live(\?|$)/],
+        // FOUND A FOURTH TIME 2026-09-11, ON GO-LIVE MORNING, and this one was
+        // a path SHAPE nobody had considered rather than a path nobody had
+        // listed. `/roa/tracking-help.html` renders blank: `[\w-]+` cannot
+        // cross a `/`, so every entry above matched top-level files only and a
+        // help page one directory down fell straight through to the app shell.
+        //
+        // THE RIDER PATH MAKES IT WORSE THAN THE OTHERS. A rider signs in -
+        // which installs the worker - and then taps the help link in the same
+        // mail. So the act of onboarding is what breaks the page that explains
+        // onboarding, and it is blank for exactly the people who needed it.
+        //
+        // `(?:[\w-]+\/)*` makes the directory part optional and repeatable, so
+        // top-level and nested both match. Still cannot shadow a React route:
+        // no route ends in .html or .apk.
+        navigateFallbackDenylist: [/^\/api/, /^\/(?:[\w-]+\/)*[\w-]+\.(html|apk)(\?|$)/, /^\/live(\?|$)/],
         globPatterns: ['**/*.{js,css,html,woff,woff2,mp3}'],
       },
       manifest: {
