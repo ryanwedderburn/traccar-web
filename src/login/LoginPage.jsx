@@ -192,6 +192,34 @@ const LoginPage = () => {
      defensively: attributes is absent before /api/server resolves, and a
      login page that throws is a login page nobody can use. */
   const liveEnabled = useSelector((state) => Boolean(state.session.server.attributes?.liveUser));
+
+  /* OURS. THE FORM ASKS FOR SOMETHING RIDERS DO NOT HAVE.
+     A competitor signs in with a race-number login (`roa26-355`) and an issued
+     code. The field said "Email", carried autoComplete="email" so the phone
+     offered his saved addresses and an email keyboard, and the second said
+     "Password". Three separate signals, all wrong, on the one screen every
+     rider has to get through. Caden Weise, rider 355, 2026-09-17: "it asked
+     for my email and password, I can't seem to come right with this login".
+     He is one of the ones who wrote in.
+
+     PER HOST, NOT GLOBAL. The same page serves crew and administrators, who
+     really do use an email and a password, so this reads the hostBranding
+     entry the way `ui.disableLoginLive` and `announcement` already do -
+     absent means upstream's wording, unchanged, for every other hostname.
+     Wording is then a Settings -> Server edit and needs no deploy.
+
+     The field is NOT type="email" and never was, so a race-number login has
+     always submitted. Nothing here unblocks anyone; it stops the form telling
+     riders to enter the wrong thing. */
+  const identifierLabel = useSelector(
+    (state) => state.session.server.attributes?.['ui.loginIdentifierLabel'],
+  );
+  const secretLabel = useSelector(
+    (state) => state.session.server.attributes?.['ui.loginSecretLabel'],
+  );
+  const identifierHint = useSelector(
+    (state) => state.session.server.attributes?.['ui.loginIdentifierHint'],
+  );
   const openIdEnabled = useSelector((state) => state.session.server.openIdEnabled);
   const openIdForced = useSelector(
     (state) => state.session.server.openIdEnabled && state.session.server.openIdForce,
@@ -364,18 +392,25 @@ const LoginPage = () => {
             <TextField
               required
               error={failed}
-              label={t('userEmail')}
+              label={identifierLabel || t('userEmail')}
               name="email"
               value={email}
-              autoComplete="email"
+              /* "username" whenever this host has renamed the field: Traccar
+                 accepts a login name here regardless, and it stops the phone
+                 offering email addresses for a field that is not one. */
+              autoComplete={identifierLabel ? 'username' : 'email'}
               autoFocus={!email}
               onChange={(e) => setEmail(e.target.value)}
-              helperText={failed && (failure || 'Invalid username or password')}
+              /* A failure always wins the line. An example only shows while
+                 the field is empty - it is there to start someone off, not to
+                 sit under what they have already typed. */
+              helperText={(failed && (failure || 'Invalid username or password'))
+                || (!email && identifierHint) || ' '}
             />
             <TextField
               required
               error={failed}
-              label={t('userPassword')}
+              label={secretLabel || t('userPassword')}
               name="password"
               value={password}
               type={showPassword ? 'text' : 'password'}
