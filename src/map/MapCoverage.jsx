@@ -143,10 +143,59 @@ const MapCoverage = () => {
       },
     });
 
-    let button;
+    return () => {
+      if (map.getLayer('coverage')) {
+        map.removeLayer('coverage');
+      }
+      if (map.getSource('coverage')) {
+        map.removeSource('coverage');
+      }
+    };
+  }, [zones, grid]);
+
+  /**
+   * THE BUTTON IS MOUNTED ONCE, AND IT CLEANS UP AFTER ITSELF.
+   *
+   * Both halves of that sentence were wrong, and together they stacked four
+   * coverage buttons down the right-hand side of the map (Ryan, 2026-09-17:
+   * "Sometimes on reloads it's duplicating the icon").
+   *
+   * `map.removeControl(control)` calls `control.onRemove()` and does NOT
+   * remove the control's DOM node - by MapLibre's contract the control owns
+   * its own container. `onRemove` here was an empty function, so every
+   * teardown dropped the control from MapLibre's list and left the button on
+   * the screen, and the next `addControl` put a fresh one beside it. Every
+   * other control in this app already does this correctly; this was the only
+   * one that did not.
+   *
+   * And the teardown ran often, because the effect that added the button was
+   * the effect that drew the layer, keyed on [zones, grid, classes, theme]:
+   * `zones` is a new array on every coverage fetch, `classes` and `theme` are
+   * new identities on re-render. So the leak was not an edge case, it was the
+   * normal path - which is why it looked intermittent rather than broken.
+   *
+   * Splitting them is the actual fix. The layer belongs to the data and is
+   * rebuilt when the data changes; the button belongs to the map and is
+   * mounted for as long as the map is. `classes` is read through a ref so
+   * restyling never remounts the control.
+   */
+  const classesRef = useRef(classes);
+  classesRef.current = classes;
+  const rtl = theme.direction === 'rtl';
+
+  useEffect(() => {
+    if (visibleRef.current === null) {
+      visibleRef.current = localStorage.getItem(STORAGE_KEY) !== 'false';
+    }
+    let container = null;
+    let button = null;
+    let root = null;
+    const paint = () => {
+      button.className = `${classesRef.current.button}${visibleRef.current ? ' active' : ''}`;
+    };
     const control = {
       onAdd: () => {
-        const container = document.createElement('div');
+        container = document.createElement('div');
         container.className = 'maplibregl-ctrl maplibregl-ctrl-group';
         button = document.createElement('button');
         button.type = 'button';
@@ -154,7 +203,7 @@ const MapCoverage = () => {
            where updates arrive late, which is not the same as grading anyone's
            network in front of spectators. */
         button.title = 'Areas with delayed updates';
-        button.className = `${classes.button}${visibleRef.current ? ' active' : ''}`;
+        paint();
         button.onclick = () => {
           visibleRef.current = !visibleRef.current;
           localStorage.setItem(STORAGE_KEY, String(visibleRef.current));
@@ -165,26 +214,30 @@ const MapCoverage = () => {
               visibleRef.current ? 'visible' : 'none',
             );
           }
-          button.className = `${classes.button}${visibleRef.current ? ' active' : ''}`;
+          paint();
         };
-        createRoot(button).render(<SignalCellularAltIcon fontSize="small" />);
+        root = createRoot(button);
+        root.render(<SignalCellularAltIcon fontSize="small" />);
         container.appendChild(button);
         return container;
       },
-      onRemove: () => {},
+      onRemove: () => {
+        /* Unmounting a root synchronously from inside a commit is the one
+           thing React asks you not to do, and an effect cleanup is inside one.
+           A task defers it by a tick without leaving it unmounted. */
+        if (root) {
+          const dying = root;
+          root = null;
+          setTimeout(() => dying.unmount(), 0);
+        }
+        container?.remove();
+        container = null;
+        button = null;
+      },
     };
-    map.addControl(control, theme.direction === 'rtl' ? 'top-left' : 'top-right');
-
-    return () => {
-      map.removeControl(control);
-      if (map.getLayer('coverage')) {
-        map.removeLayer('coverage');
-      }
-      if (map.getSource('coverage')) {
-        map.removeSource('coverage');
-      }
-    };
-  }, [zones, grid, classes, theme]);
+    map.addControl(control, rtl ? 'top-left' : 'top-right');
+    return () => map.removeControl(control);
+  }, [rtl]);
 
   return null;
 };
