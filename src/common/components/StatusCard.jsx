@@ -289,6 +289,23 @@ const StatusCard = ({
                   </IconButton>
                 </div>
               </CardMedia>
+              {/* NO POSITION, ON A SPECTATOR HOST, IS NOT A FAULT.
+                  The spectator account only receives positions inside the
+                  event area (the public-area filter), so a rider at home, in
+                  Maseru or driving in reads as a device with no position at
+                  all - an entry that opens a card with nothing in it and a map
+                  that does not move. Race control answered that question all
+                  evening on go-live night, 2026-09-22, so the card says it
+                  itself. Kiosk-only: an admin with no position has a different
+                  problem and must not be told this one. */}
+              {!position && kiosk && (
+                <CardContent className={classes.content}>
+                  <Typography variant="body2">
+                    This rider is outside the race area. Riders appear on the
+                    map once they are on course.
+                  </Typography>
+                </CardContent>
+              )}
               {position && equipmentUi && <EquipmentGauges position={position} device={device} />}
               {position && (
                 <CardContent className={classes.content}>

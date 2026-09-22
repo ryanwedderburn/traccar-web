@@ -154,7 +154,18 @@ const DeviceRow = ({ devices, competitors, index, style }) => {
 
   const secondaryText = () => {
     let status;
-    if (item.status === 'online' || !item.lastUpdate) {
+    // A spectator only receives positions inside the event area, so a device
+    // that is reporting from outside it arrives with no position and would
+    // otherwise read "Online" beside a map that never moves. Say which it is.
+    // Kiosk-only, and only once the device has ever reported: a device that
+    // has never reported is a setup problem, not a geography one.
+    let colorKey = getStatusColor(item.status);
+    if (kiosk && !position && item.lastUpdate) {
+      // Neutral, not green: "Online" in green beside a map that cannot show
+      // them is the confusion this line exists to remove.
+      status = 'Outside race area';
+      colorKey = 'neutral';
+    } else if (item.status === 'online' || !item.lastUpdate) {
       status = formatStatus(item.status, t);
     } else {
       status = dayjs(item.lastUpdate).fromNow();
@@ -167,7 +178,7 @@ const DeviceRow = ({ devices, competitors, index, style }) => {
             {' • '}
           </>
         )}
-        <span className={classes[getStatusColor(item.status)]}>{status}</span>
+        <span className={classes[colorKey]}>{status}</span>
       </>
     );
   };
