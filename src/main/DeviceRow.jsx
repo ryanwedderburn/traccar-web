@@ -161,10 +161,12 @@ const DeviceRow = ({ devices, competitors, index, style }) => {
     // has never reported is a setup problem, not a geography one.
     let colorKey = getStatusColor(item.status);
     if (kiosk && !position && item.lastUpdate) {
-      // Neutral, not green: "Online" in green beside a map that cannot show
-      // them is the confusion this line exists to remove.
+      // The COLOUR still answers "is this thing reporting?" - green for a rider
+      // whose phone is live right now - and the WORDS answer "why is there no
+      // marker?". Ryan, 2026-09-22: "should be green if the user is in fact
+      // online and reporting." Greying it conflated being out of the area with
+      // being out of contact, which is the distinction race control needs.
       status = 'Outside race area';
-      colorKey = 'neutral';
     } else if (item.status === 'online' || !item.lastUpdate) {
       status = formatStatus(item.status, t);
     } else {
