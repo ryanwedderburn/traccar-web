@@ -83,7 +83,16 @@ const MainMap = ({
         {/* Above overlays, below geofences and markers - see the component. */}
         <MapFloorPlans />
         <MapGeofence filter={routeFilter} />
-        <MapAccuracy positions={markerPositions} />
+        {/* SELECTED DEVICE ONLY. One filled circle per position, radius =
+            that position's accuracy, is unreadable at race density: a phone
+            that falls back to a network fix reports kilometres, and five
+            hundred of those at a start or a bivouac merge into one blue mass
+            that hides the terrain, the routes and the markers under it.
+            Measured 24 Sep, TT morning - discs several km across around Roma.
+            The circle answers "can I trust this fix", which is a question
+            asked about ONE rider, after clicking them. So it is drawn for the
+            selection and nowhere else. */}
+        <MapAccuracy positions={selectedPosition ? [selectedPosition] : []} />
         {/* Trails stay per device. Two sources are never merged into one
             recorded track - the blending is a view, and a rider's phone and
             their bike's tracker each keep their own history. */}
