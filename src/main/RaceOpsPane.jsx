@@ -158,7 +158,7 @@ const RaceOpsPane = () => {
         <FlagIcon fontSize="small" sx={{ transform: 'rotate(90deg)' }} />
       </Badge>
       <Typography variant="body2" fontWeight={600}>
-        {alarms ? `SOS · ${alarms} to action` : 'Who is still out'}
+        {alarms ? `SOS · ${alarms} to action` : 'Race Operations'}
       </Typography>
     </Paper>
   );
@@ -184,14 +184,14 @@ const RaceOpsPane = () => {
           }
         >
           {alarms > 1 ? `${alarms} SOS to action · ` : 'SOS to action · '}
-          {latest}
+          {latest || 'open the pane for details'}
         </Alert>
       )}
       <Paper className={classes.pane} elevation={3} style={open ? undefined : { display: 'none' }}>
         <div className={classes.bar}>
           <Typography variant="subtitle2" sx={{ flex: 1 }} color={alarms ? 'error' : undefined}>
             {alarms ? `SOS · ${alarms} to action · ` : ''}
-            Who is still out
+            Race Operations
             {counts ? ` · ${counts.out} out${counts.quiet ? `, ${counts.quiet} quiet` : ''}` : ''}
           </Typography>
           <IconButton size="small" title="Open as a page" href="/race-ops.html" target="_blank">
@@ -204,7 +204,7 @@ const RaceOpsPane = () => {
         <iframe
           ref={frameRef}
           className={classes.frame}
-          title="Who is still out"
+          title="Race Operations"
           src="/race-ops.html?embed"
           allow="clipboard-write"
         />
