@@ -72,6 +72,7 @@ const RaceOpsPane = () => {
   const frameRef = useRef(null);
   const [open, setOpen] = usePersistedState('raceOpsPane', false);
   const [counts, setCounts] = useState(null);
+  const [alarms, setAlarms] = useState(0);
 
   useEffect(() => {
     const onMessage = (event) => {
@@ -81,11 +82,13 @@ const RaceOpsPane = () => {
       ) {
         return;
       }
-      const { type, deviceId, out, quiet } = event.data || {};
+      const { type, deviceId, out, quiet, open: openAlarms } = event.data || {};
       if (type === 'wlab:locate' && Number.isFinite(deviceId)) {
         dispatch(devicesActions.selectId(deviceId));
       } else if (type === 'wlab:raceops') {
         setCounts({ out, quiet });
+      } else if (type === 'wlab:alarms') {
+        setAlarms(Number(openAlarms) || 0);
       }
     };
     window.addEventListener('message', onMessage);
@@ -97,39 +100,53 @@ const RaceOpsPane = () => {
     return () => map.setPadding({ top: 0, bottom: 0, left: 0, right: 0 });
   }, [open]);
 
-  if (!open) {
-    return (
-      <Paper className={classes.tab} elevation={3} onClick={() => setOpen(true)}>
-        <Badge color="error" badgeContent={counts?.out || 0} invisible={!counts?.out}>
-          <FlagIcon fontSize="small" sx={{ transform: 'rotate(90deg)' }} />
-        </Badge>
-        <Typography variant="body2" fontWeight={600}>
-          Who is still out
-        </Typography>
-      </Paper>
-    );
-  }
-  return (
-    <Paper className={classes.pane} elevation={3}>
-      <div className={classes.bar}>
-        <Typography variant="subtitle2" sx={{ flex: 1 }}>
-          Who is still out
-          {counts ? ` · ${counts.out} out${counts.quiet ? `, ${counts.quiet} quiet` : ''}` : ''}
-        </Typography>
-        <IconButton size="small" title="Open as a page" href="/race-ops.html" target="_blank">
-          <OpenInNewIcon fontSize="small" />
-        </IconButton>
-        <IconButton size="small" title="Hide" onClick={() => setOpen(false)}>
-          <CloseIcon fontSize="small" />
-        </IconButton>
-      </div>
-      <iframe
-        ref={frameRef}
-        className={classes.frame}
-        title="Who is still out"
-        src="/race-ops.html?embed"
-      />
+  /* The board keeps running while the pane is closed - the iframe stays
+     mounted, hidden - so an SOS still turns the tab red. */
+  const tab = !open && (
+    <Paper
+      className={classes.tab}
+      elevation={3}
+      onClick={() => setOpen(true)}
+      sx={alarms ? { bgcolor: 'error.main', color: 'error.contrastText' } : undefined}
+    >
+      <Badge
+        color={alarms ? 'warning' : 'error'}
+        badgeContent={alarms || counts?.out || 0}
+        invisible={!alarms && !counts?.out}
+      >
+        <FlagIcon fontSize="small" sx={{ transform: 'rotate(90deg)' }} />
+      </Badge>
+      <Typography variant="body2" fontWeight={600}>
+        {alarms ? `SOS · ${alarms} to action` : 'Who is still out'}
+      </Typography>
     </Paper>
+  );
+  return (
+    <>
+      {tab}
+      <Paper className={classes.pane} elevation={3} style={open ? undefined : { display: 'none' }}>
+        <div className={classes.bar}>
+          <Typography variant="subtitle2" sx={{ flex: 1 }} color={alarms ? 'error' : undefined}>
+            {alarms ? `SOS · ${alarms} to action · ` : ''}
+            Who is still out
+            {counts ? ` · ${counts.out} out${counts.quiet ? `, ${counts.quiet} quiet` : ''}` : ''}
+          </Typography>
+          <IconButton size="small" title="Open as a page" href="/race-ops.html" target="_blank">
+            <OpenInNewIcon fontSize="small" />
+          </IconButton>
+          <IconButton size="small" title="Hide" onClick={() => setOpen(false)}>
+            <CloseIcon fontSize="small" />
+          </IconButton>
+        </div>
+        <iframe
+          ref={frameRef}
+          className={classes.frame}
+          title="Who is still out"
+          src="/race-ops.html?embed"
+          allow="clipboard-write"
+        />
+      </Paper>
+    </>
   );
 };
 
