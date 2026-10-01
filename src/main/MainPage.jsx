@@ -489,8 +489,8 @@ const MainPage = () => {
       */}
       <CoverageNotice />
       {/* Race ops beside the map, for whoever may use the board on this host
-          (tools.json: race-ops). Desktop only - see RaceOpsPane. */}
-      {desktop && raceOps && <RaceOpsPane />}
+          (tools.json: race-ops). On a phone: alarm banner only - see RaceOpsPane. */}
+      {raceOps && <RaceOpsPane phone={!desktop} />}
       <EventsDrawer open={eventsOpen} onClose={() => setEventsOpen(false)} />
       {selectedDeviceId && (
         <StatusCard

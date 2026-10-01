@@ -20,7 +20,8 @@ import usePersistedState from '../common/util/usePersistedState';
  *   board -> map  {type: 'wlab:locate', deviceId}   select the rider here
  *   board -> map  {type: 'wlab:raceops', out, quiet} counts for the tab
  *
- * Desktop only - on a phone the map IS the screen and the board has its own
+ * Desktop gets the pane; a phone gets the alarm banner only (phone prop) - the
+ * map is the screen there and the board has its own
  * page. The map is padded on the right while the pane is open, so a located
  * rider lands in the visible part of the map rather than under the pane.
  */
@@ -86,7 +87,13 @@ const useStyles = makeStyles()((theme) => ({
   },
 }));
 
-const RaceOpsPane = () => {
+/*
+ * phone: no pane - the map is the whole screen. The board still runs in a
+ * hidden iframe so alarms are watched, and an SOS shows the same banner; Open
+ * goes to /race-ops.html as a page. Ryan, 2026-10-01: "we need banner on phone
+ * too".
+ */
+const RaceOpsPane = ({ phone = false }) => {
   const { classes } = useStyles();
   const dispatch = useDispatch();
   const frameRef = useRef(null);
@@ -126,7 +133,9 @@ const RaceOpsPane = () => {
            already open: reloading the map must not replay old alarms. */
         const current = new Set(keys || []);
         if (seenRef.current && [...current].some((k) => !seenRef.current.has(k))) {
-          setOpen(true);
+          if (!phone) {
+            setOpen(true);
+          }
           beep();
         }
         seenRef.current = current;
@@ -134,16 +143,28 @@ const RaceOpsPane = () => {
     };
     window.addEventListener('message', onMessage);
     return () => window.removeEventListener('message', onMessage);
-  }, [dispatch, setOpen]);
+  }, [dispatch, setOpen, phone]);
 
   useEffect(() => {
+    if (phone) {
+      return undefined;
+    }
     map.setPadding({ top: 0, bottom: 0, left: 0, right: open ? WIDTH : 0 });
     return () => map.setPadding({ top: 0, bottom: 0, left: 0, right: 0 });
-  }, [open]);
+  }, [open, phone]);
+
+  const openBoard = () => {
+    if (phone) {
+      window.location.href = '/race-ops.html';
+    } else {
+      setOpen(true);
+    }
+  };
+  const showPane = open && !phone;
 
   /* The board keeps running while the pane is closed - the iframe stays
      mounted, hidden - so an SOS still turns the tab red. */
-  const tab = !open && (
+  const tab = !open && !phone && (
     <Paper
       className={classes.tab}
       elevation={3}
@@ -165,7 +186,7 @@ const RaceOpsPane = () => {
   return (
     <>
       {tab}
-      {!open && alarms > 0 && (
+      {(!open || phone) && alarms > 0 && (
         <Alert
           severity="error"
           variant="filled"
@@ -174,11 +195,13 @@ const RaceOpsPane = () => {
             top: 12,
             left: '50%',
             transform: 'translateX(-50%)',
-            zIndex: 6,
+            // Above the phone's header and device list, which sit at 4-6.
+            zIndex: 1300,
+            width: phone ? 'calc(100% - 24px)' : 'auto',
             maxWidth: 'calc(100% - 24px)',
           }}
           action={
-            <Button color="inherit" size="small" onClick={() => setOpen(true)}>
+            <Button color="inherit" size="small" onClick={openBoard}>
               Open
             </Button>
           }
@@ -187,7 +210,11 @@ const RaceOpsPane = () => {
           {latest || 'open the pane for details'}
         </Alert>
       )}
-      <Paper className={classes.pane} elevation={3} style={open ? undefined : { display: 'none' }}>
+      <Paper
+        className={classes.pane}
+        elevation={3}
+        style={showPane ? undefined : { display: 'none' }}
+      >
         <div className={classes.bar}>
           <Typography variant="subtitle2" sx={{ flex: 1 }} color={alarms ? 'error' : undefined}>
             {alarms ? `SOS · ${alarms} to action · ` : ''}
