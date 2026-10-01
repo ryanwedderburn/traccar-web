@@ -45,7 +45,12 @@ export default () => {
   useEffect(() => {
     if (registry) return undefined;
     const controller = new AbortController();
-    fetch('/tools.json', { headers: { Accept: 'application/json' }, signal: controller.signal })
+    fetch('/tools.json', {
+      // Served max-age=3600; without this a new tool is invisible for an hour.
+      cache: 'no-cache',
+      headers: { Accept: 'application/json' },
+      signal: controller.signal,
+    })
       .then((response) => (response.ok ? response.json() : null))
       .then((json) => {
         registry = Array.isArray(json?.tools) ? json.tools : [];
