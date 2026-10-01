@@ -328,6 +328,18 @@ const MainPage = () => {
     setSearchParams,
   ]);
 
+  // Riders follow the class selection unless the viewer asked for the whole
+  // field (`ridersAll`, the "Riders" toggle in RouteFilter). Memoised: it is
+  // an effect dependency in useFilter, and a fresh array every render would
+  // re-run the filter on every websocket tick.
+  const riderClasses = useMemo(
+    () =>
+      activeRouteFilter?.classes?.length && !activeRouteFilter.ridersAll
+        ? activeRouteFilter.classes.map((value) => String(value).toLowerCase())
+        : [],
+    [activeRouteFilter],
+  );
+
   useFilter(
     keyword,
     filter,
@@ -339,6 +351,7 @@ const MainPage = () => {
     positions,
     setFilteredDevices,
     setFilteredPositions,
+    riderClasses,
   );
 
   /* The map is rendered twice - desktop puts it behind the sidebar, phone puts

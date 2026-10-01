@@ -153,6 +153,10 @@ const RouteFilter = ({ filter, setFilter, eventDays }) => {
     parts.push(dayText);
     if (filter.classes?.length) {
       parts.push(filter.classes.join(', '));
+      /* Say what the riders are doing, always. A filter that hides riders
+         silently reads as tracking failure - the spectator who never opens
+         this row must be able to tell "only Gold" from "lost the rest". */
+      parts.push(filter.ridersAll ? 'riders: all' : 'riders: these classes');
     }
     /* Last, and only when true. A spectator who picks Gold on a day Gold does
        not ride needs to know the map is empty on purpose - otherwise the
@@ -161,7 +165,15 @@ const RouteFilter = ({ filter, setFilter, eventDays }) => {
       parts.push('no routes');
     }
     return parts.join(' · ');
-  }, [events.length, filter.event, filter.day, filter.classes, anyRoutes, eventDays]);
+  }, [
+    events.length,
+    filter.event,
+    filter.day,
+    filter.classes,
+    filter.ridersAll,
+    anyRoutes,
+    eventDays,
+  ]);
 
   if (!events.length) {
     return null;
@@ -263,6 +275,27 @@ const RouteFilter = ({ filter, setFilter, eventDays }) => {
                   {name}
                 </ToggleButton>
               ))}
+            </ToggleButtonGroup>
+          )}
+
+          {/* Whether the class selection also narrows the riders. On by
+              default - picking Gold to watch Gold is what a parent asked for -
+              and switchable, so routes can stay on Gold while the whole field
+              is on the map. Only meaningful once a class is chosen. */}
+          {filter.classes?.length > 0 && (
+            <ToggleButtonGroup
+              className={styles.classes}
+              size="small"
+              exclusive
+              value={filter.ridersAll ? 'all' : 'classes'}
+              onChange={(event, value) => value && update({ ridersAll: value === 'all' })}
+            >
+              <ToggleButton className={styles.class} value="classes">
+                Riders: {filter.classes.join(', ')}
+              </ToggleButton>
+              <ToggleButton className={styles.class} value="all">
+                Riders: all
+              </ToggleButton>
             </ToggleButtonGroup>
           )}
         </div>

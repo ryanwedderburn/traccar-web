@@ -22,6 +22,7 @@ export default (
   positions,
   setFilteredDevices,
   setFilteredPositions,
+  riderClasses = [],
 ) => {
   const groups = useSelector((state) => state.groups.items);
   const devices = useSelector((state) => state.devices.items);
@@ -70,7 +71,47 @@ export default (
      places and splitting them is how one of the four gets forgotten. */
   const shown = (deviceId) => inScope(deviceId) && !hiddenTest(deviceId);
 
+  /* THE CLASS FILTER SCOPES RIDERS TOO. Ryan, 2026-09-29 and 2026-10-01: a
+   * parent picked Gold to watch the riders his son was racing and still got
+   * all ~500; "if user selects gold and bronze, then show those riders".
+   * `riderClasses` is the lower-cased selection from "Tracks on map", empty
+   * when the viewer chose "all riders" or chose no class.
+   *
+   * A rider's class is his device's group, the child of an event group - the
+   * same rule RouteProgressHandler uses. A rider ACCOUNT cannot see the group
+   * tree (device links only, VIEWER-AUTH.md), so the position's `routeClass`,
+   * stamped by the server on event days, stands in for it.
+   *
+   * What always stays: anything that is not a class rider (crew, sweep, a
+   * vehicle - no class, nothing to filter on), a favourite, and the selected
+   * device. A parent following one rider in Silver while viewing Gold keeps
+   * him. And a typed SEARCH finds any rider: a search is already a filter the
+   * viewer chose, and "I typed his number and he is not there" reads as the
+   * platform losing him. */
+
   useEffect(() => {
+    const truthy = (value) => value === true || value === 'true';
+    const classOf = (device) => {
+      const group = groups[device.groupId];
+      const parent = group && group.groupId ? groups[group.groupId] : null;
+      if (parent && !parent.groupId && !truthy(parent.attributes?.vertical)) {
+        return String(group.name).toLowerCase();
+      }
+      const stamped = positions[device.id]?.attributes?.routeClass;
+      return stamped ? String(stamped).toLowerCase() : null;
+    };
+    const inClasses = (device) => {
+      if (!riderClasses.length) {
+        return true;
+      }
+      const klass = classOf(device);
+      return (
+        klass === null ||
+        riderClasses.includes(klass) ||
+        favourites.includes(device.id) ||
+        device.id === selectedId
+      );
+    };
     const deviceGroups = (device) => {
       const groupIds = [];
       let { groupId } = device;
@@ -88,6 +129,7 @@ export default (
       .filter((device) => shown(device.id))
       .filter((device) => !showFavourites || favourites.includes(device.id))
       .filter((device) => !filter.statuses.length || filter.statuses.includes(device.status))
+      .filter((device) => inClasses(device) || keyword.trim().length > 0)
       .filter(
         (device) =>
           !filter.groups.length || deviceGroups(device).some((id) => filter.groups.includes(id)),
@@ -144,7 +186,13 @@ export default (
     } else if (filterMap) {
       setFilteredPositions(filtered.map((device) => positions[device.id]).filter(Boolean));
     } else {
-      setFilteredPositions(Object.values(positions).filter((p) => shown(p.deviceId)));
+      // The whole field, but within the class selection - the map and the list
+      // must agree on who is in the race being watched.
+      setFilteredPositions(
+        Object.values(positions).filter(
+          (p) => shown(p.deviceId) && (!devices[p.deviceId] || inClasses(devices[p.deviceId])),
+        ),
+      );
     }
   }, [
     keyword,
@@ -164,6 +212,7 @@ export default (
        A session change - signing in as the spectator account to check what they
        see - would leave test riders showing, or hidden, from the wrong one. */
     kiosk,
+    riderClasses,
     setFilteredDevices,
     setFilteredPositions,
   ]);
