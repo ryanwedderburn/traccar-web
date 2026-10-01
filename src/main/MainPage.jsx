@@ -25,6 +25,8 @@ import SupportWidget from '../common/components/SupportWidget';
 import CoverageNotice from './components/CoverageNotice';
 import useRouteFilter from '../common/util/useRouteFilter';
 import useEventDays from '../common/util/useEventDays';
+import useTools from '../common/util/useTools';
+import RaceOpsPane from './RaceOpsPane';
 
 const MainMap = lazy(() => import('./MainMap'));
 
@@ -112,6 +114,7 @@ const MainPage = () => {
   const theme = useTheme();
 
   const desktop = useMediaQuery(theme.breakpoints.up('md'));
+  const raceOps = useTools().some((tool) => tool.id === 'race-ops');
 
   const mapOnSelect = useAttributePreference('mapOnSelect', true);
 
@@ -485,6 +488,9 @@ const MainPage = () => {
         identical from here.
       */}
       <CoverageNotice />
+      {/* Race ops beside the map, for whoever may use the board on this host
+          (tools.json: race-ops). Desktop only - see RaceOpsPane. */}
+      {desktop && raceOps && <RaceOpsPane />}
       <EventsDrawer open={eventsOpen} onClose={() => setEventsOpen(false)} />
       {selectedDeviceId && (
         <StatusCard
