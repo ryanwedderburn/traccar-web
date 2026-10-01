@@ -27,7 +27,12 @@ export const toolsVisible = (tools, user, server) => {
     .split(',')
     .map((s) => s.trim())
     .filter(Boolean);
+  const granted = String(user.attributes?.tools || '')
+    .split(',')
+    .map((x) => x.trim())
+    .filter(Boolean);
   return (tools || []).filter((t) => {
+    if (t.who !== 'admin' && granted.includes(t.id)) return true;
     if (t.perHost && !admin && !listed.includes(t.id)) return false;
     if (t.who === 'admin') return admin;
     if (t.who === 'writer') return admin || !user.readonly;
