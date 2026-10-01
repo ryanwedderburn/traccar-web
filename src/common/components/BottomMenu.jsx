@@ -30,6 +30,7 @@ import useEventUi from '../util/useEventUi';
 import useEquipmentUi from '../util/useEquipmentUi';
 import useSetupUi from '../util/useSetupUi';
 import useKiosk from '../util/useKiosk';
+import useTools from '../util/useTools';
 import WaypointsDialog from './WaypointsDialog';
 import SponsorsDialog from './SponsorsDialog';
 import useSponsors from '../util/useSponsors';
@@ -68,6 +69,15 @@ const BottomMenu = ({ routeFilter }) => {
    * setting that is always the same value.
    */
   const administrator = useAdministrator();
+
+  /*
+   * Event setup used to be the one hard-coded entry here. It is now the first
+   * row of /tools.json, beside Record the course and Who is still out, so a
+   * team host's crew get their pages from the same menu and a new page needs no
+   * rebuild. Ryan, 2026-10-01: "more features coming for these individual team
+   * setups, so we should cater for that upfront". See useTools.js.
+   */
+  const tools = useTools();
 
   /*
    * WHERE A READONLY ACCOUNT GOES TO WATCH THE WHOLE FIELD.
@@ -197,7 +207,7 @@ const BottomMenu = ({ routeFilter }) => {
   };
 
   /*
-   * A FULL NAVIGATION, not navigate(). manage.html is served by
+   * A FULL NAVIGATION, not navigate(). The tool pages are served by
    * OverrideFileFilter and is not a route this app owns, so react-router would
    * match nothing and leave the user on a blank screen with the URL changed -
    * which looks exactly like the page being down.
@@ -213,9 +223,9 @@ const BottomMenu = ({ routeFilter }) => {
    * carries a "Live map" link - so a new tab would leave two copies of the app
    * open and a back button that does nothing.
    */
-  const handleManage = () => {
+  const handleTool = (href) => {
     setAnchorEl(null);
-    window.location.href = '/manage.html';
+    window.location.href = href;
   };
 
   /* A FULL NAVIGATION, like the Event setup entry and the login page's button:
@@ -485,11 +495,11 @@ const BottomMenu = ({ routeFilter }) => {
           but English, and an empty menu item is a worse outcome than an
           untranslated one.
         */}
-        {administrator && (
-          <MenuItem onClick={handleManage}>
-            <Typography color="textPrimary">Event setup</Typography>
+        {tools.map((tool) => (
+          <MenuItem key={tool.id} onClick={() => handleTool(tool.href)}>
+            <Typography color="textPrimary">{tool.label}</Typography>
           </MenuItem>
-        )}
+        ))}
         <MenuItem onClick={handleLogout}>
           <Typography color="error">{t('loginLogout')}</Typography>
         </MenuItem>
