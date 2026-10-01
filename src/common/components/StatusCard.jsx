@@ -200,6 +200,43 @@ const CompetitorRows = ({ competitor, devices }) => {
   );
 };
 
+/* WHERE ALONG TODAY'S COURSE. Written by RouteProgressHandler on the server
+   (route* position attributes) for a rider in a class on an event day - so
+   this renders nothing anywhere else, stock hosts included.
+
+   Witness wording throughout, never a result: "seen at the finish", not
+   "finished" - the organiser's timing owns that word (CONTEXT, witness-not-
+   scorer). The figures are what the tracking saw at the time of this fix. */
+const km = (metres) => (Number(metres) / 1000).toFixed(1);
+const clock = (iso) => new Date(iso).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+
+const ProgressRows = ({ position }) => {
+  const attributes = position?.attributes || {};
+  if (attributes.routeLength == null) {
+    return null;
+  }
+  const name = `Day ${attributes.routeDay} course`;
+  let content;
+  if (attributes.routeAlong != null) {
+    content = `${km(attributes.routeAlong)} of ${km(attributes.routeLength)} km · ${km(attributes.routeToGo)} km to go`;
+  } else if (attributes.routeOff) {
+    content =
+      Number(attributes.routeFurthest) > 0
+        ? `Not on the course · furthest seen ${km(attributes.routeFurthest)} km`
+        : 'Not on the course';
+  } else {
+    content = `${km(attributes.routeLength)} km`;
+  }
+  return (
+    <>
+      <StatusRow name={name} content={content} />
+      {attributes.routeFinished && (
+        <StatusRow name="Seen at finish" content={clock(attributes.routeFinished)} />
+      )}
+    </>
+  );
+};
+
 const StatusCard = ({
   deviceId,
   position,
@@ -312,6 +349,7 @@ const StatusCard = ({
                   <Table size="small" className={classes.table}>
                     <TableBody>
                       <CompetitorRows competitor={competitor} devices={devices} />
+                      <ProgressRows position={position} />
                       {positionItems
                         .split(',')
                         .filter(

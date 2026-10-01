@@ -24,6 +24,7 @@ import useKiosk from '../common/util/useKiosk';
 import SupportWidget from '../common/components/SupportWidget';
 import CoverageNotice from './components/CoverageNotice';
 import useRouteFilter from '../common/util/useRouteFilter';
+import useEventDays from '../common/util/useEventDays';
 
 const MainMap = lazy(() => import('./MainMap'));
 
@@ -203,7 +204,7 @@ const MainPage = () => {
   // it with, because the event selector hides itself when only one event
   // exists. Treating an unknown value as unset makes it self-healing.
   const { events: availableEvents } = useRouteFilter(routeFilter);
-  const effectiveRouteFilter = useMemo(() => {
+  const eventRouteFilter = useMemo(() => {
     if (routeFilter.event && availableEvents.includes(routeFilter.event)) {
       return routeFilter;
     }
@@ -213,6 +214,21 @@ const MainPage = () => {
     const event = availableEvents.length === 1 ? availableEvents[0] : null;
     return event === routeFilter.event ? routeFilter : { ...routeFilter, event };
   }, [availableEvents, routeFilter]);
+  // TODAY'S DAY, UNLESS YOU CHOSE ANOTHER TODAY. Ryan, 2026-09-29: spectators
+  // who never touched the Day selector watched yesterday's routes, because
+  // the stored choice is per browser and outlives the day it was made on.
+  // So on an event day the day follows the calendar, and a manual pick holds
+  // only for the date it was made (`dayPickedOn`, set by RouteFilter). Outside
+  // the event, or with no dates set in manage.html, nothing changes.
+  // Derived rather than written back, like the event fallback above.
+  const eventDays = useEventDays(eventRouteFilter.event);
+  const effectiveRouteFilter = useMemo(() => {
+    const { todayDay, today } = eventDays;
+    if (!todayDay || eventRouteFilter.dayPickedOn === today || eventRouteFilter.day === todayDay) {
+      return eventRouteFilter;
+    }
+    return { ...eventRouteFilter, day: todayDay };
+  }, [eventRouteFilter, eventDays]);
   // What the map and bottom bar actually receive. Null on a stock host, so
   // MapGeofence draws everything (matchesRouteFilter passes a null filter
   // through) and a persisted routeFilter cannot hide tracks with no control
@@ -368,7 +384,13 @@ const MainPage = () => {
           looking at.
         */}
         <Paper square elevation={3} className={classes.header}>
-          {eventUi && <RouteFilter filter={effectiveRouteFilter} setFilter={setRouteFilter} />}
+          {eventUi && (
+            <RouteFilter
+              filter={effectiveRouteFilter}
+              setFilter={setRouteFilter}
+              eventDays={eventDays}
+            />
+          )}
           <MainToolbar
             filteredDevices={filteredDevices}
             devicesOpen={devicesOpen}

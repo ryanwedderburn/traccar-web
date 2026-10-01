@@ -16,6 +16,7 @@ import { makeStyles } from 'tss-react/mui';
 import { useSelector } from 'react-redux';
 import useRouteFilter, { matchesRouteFilter, isPlace } from '../../common/util/useRouteFilter';
 import usePersistedState from '../../common/util/usePersistedState';
+import { formatEventDate } from '../../common/util/useEventDays';
 
 /**
  * Event, day and class filtering for the routes and points on the map.
@@ -107,7 +108,7 @@ const useStyles = makeStyles()((theme) => ({
   },
 }));
 
-const RouteFilter = ({ filter, setFilter }) => {
+const RouteFilter = ({ filter, setFilter, eventDays }) => {
   const { classes: styles } = useStyles();
   const { events, classes, days } = useRouteFilter(filter);
 
@@ -141,7 +142,15 @@ const RouteFilter = ({ filter, setFilter }) => {
     if (events.length > 1 && filter.event) {
       parts.push(filter.event);
     }
-    parts.push(`Day ${filter.day || 'all'}`);
+    /* The date beside the day, so "Day 3" says which day it is. Today is
+       named as such, which is the one thing a spectator arriving at 07:00
+       needs to read. */
+    const date = filter.day && eventDays?.dates?.[filter.day];
+    let dayText = `Day ${filter.day || 'all'}`;
+    if (date) {
+      dayText += date === eventDays.today ? ' (today)' : ` (${formatEventDate(date)})`;
+    }
+    parts.push(dayText);
     if (filter.classes?.length) {
       parts.push(filter.classes.join(', '));
     }
@@ -152,7 +161,7 @@ const RouteFilter = ({ filter, setFilter }) => {
       parts.push('no routes');
     }
     return parts.join(' · ');
-  }, [events.length, filter.event, filter.day, filter.classes, anyRoutes]);
+  }, [events.length, filter.event, filter.day, filter.classes, anyRoutes, eventDays]);
 
   if (!events.length) {
     return null;
@@ -222,7 +231,11 @@ const RouteFilter = ({ filter, setFilter }) => {
             <FormControl className={styles.select} size="small">
               <Select
                 value={filter.day || ''}
-                onChange={(e) => update({ day: e.target.value || null })}
+                // A pick holds for the date it was made on; tomorrow the
+                // selector follows the calendar again. See MainPage.
+                onChange={(e) =>
+                  update({ day: e.target.value || null, dayPickedOn: eventDays?.today || null })
+                }
                 renderValue={(value) => `Day: ${value || 'All'}`}
                 displayEmpty
               >
@@ -230,6 +243,8 @@ const RouteFilter = ({ filter, setFilter }) => {
                 {days.map((day) => (
                   <MenuItem key={day} value={day}>
                     {day}
+                    {eventDays?.dates?.[day] &&
+                      ` · ${eventDays.dates[day] === eventDays.today ? 'today' : formatEventDate(eventDays.dates[day])}`}
                   </MenuItem>
                 ))}
               </Select>
