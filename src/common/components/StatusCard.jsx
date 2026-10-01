@@ -215,7 +215,11 @@ const ProgressRows = ({ position }) => {
   if (attributes.routeLength == null) {
     return null;
   }
-  const name = `Day ${attributes.routeDay} course`;
+  // Lapped courses carry their lap; length and to-go are over all laps.
+  const name =
+    attributes.routeLaps > 1
+      ? `Day ${attributes.routeDay} course · lap ${attributes.routeLap} of ${attributes.routeLaps}`
+      : `Day ${attributes.routeDay} course`;
   let content;
   if (attributes.routeAlong != null) {
     content = `${km(attributes.routeAlong)} of ${km(attributes.routeLength)} km · ${km(attributes.routeToGo)} km to go`;
