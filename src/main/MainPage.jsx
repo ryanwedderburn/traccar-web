@@ -421,7 +421,12 @@ const MainPage = () => {
             <DeviceListControls
               mode={effectiveMode}
               setMode={setListMode}
-              totalCount={Object.keys(devices).length}
+              // What the All list actually holds - the class filter and a search
+              // both narrow it, and "All (666)" over a list of Gold riders reads
+              // as the filter not working. 2026-10-01.
+              totalCount={
+                effectiveMode === 'all' ? filteredDevices.length : Object.keys(devices).length
+              }
               favouriteCount={favourites.length}
               mapFavouritesOnly={mapFavouritesOnly}
               setMapFavouritesOnly={setMapFavouritesOnly}
