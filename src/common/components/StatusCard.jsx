@@ -215,11 +215,16 @@ const ProgressRows = ({ position }) => {
   if (attributes.routeLength == null) {
     return null;
   }
+  // An open course (crew record button, no event days) is keyed by its date,
+  // not a day name - "Day 2026-10-04 course" reads as a bug.
+  const courseName = /^\d{4}-\d{2}-\d{2}$/.test(String(attributes.routeDay))
+    ? 'Course'
+    : `Day ${attributes.routeDay} course`;
   // Lapped courses carry their lap; length and to-go are over all laps.
   const name =
     attributes.routeLaps > 1
-      ? `Day ${attributes.routeDay} course · lap ${attributes.routeLap} of ${attributes.routeLaps}`
-      : `Day ${attributes.routeDay} course`;
+      ? `${courseName} · lap ${attributes.routeLap} of ${attributes.routeLaps}`
+      : courseName;
   let content;
   if (attributes.routeAlong != null) {
     content = `${km(attributes.routeAlong)} of ${km(attributes.routeLength)} km · ${km(attributes.routeToGo)} km to go`;
