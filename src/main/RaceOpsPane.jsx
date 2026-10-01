@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from 'react';
 import { useDispatch } from 'react-redux';
-import { Paper, IconButton, Typography, Badge } from '@mui/material';
+import { Paper, IconButton, Typography, Badge, Alert, Button } from '@mui/material';
 import { makeStyles } from 'tss-react/mui';
 import CloseIcon from '@mui/icons-material/Close';
 import FlagIcon from '@mui/icons-material/Flag';
@@ -25,6 +25,26 @@ import usePersistedState from '../common/util/usePersistedState';
  * rider lands in the visible part of the map rather than under the pane.
  */
 const WIDTH = 460;
+
+/* Three short tones. May be silent until the page has had a click - browsers
+   block audio before any interaction - which on a race-control screen it has. */
+const beep = () => {
+  try {
+    const ctx = new (window.AudioContext || window.webkitAudioContext)();
+    [0, 0.35, 0.7].forEach((at) => {
+      const osc = ctx.createOscillator();
+      const gain = ctx.createGain();
+      osc.frequency.value = 880;
+      gain.gain.setValueAtTime(0.25, ctx.currentTime + at);
+      gain.gain.setValueAtTime(0, ctx.currentTime + at + 0.2);
+      osc.connect(gain).connect(ctx.destination);
+      osc.start(ctx.currentTime + at);
+      osc.stop(ctx.currentTime + at + 0.22);
+    });
+  } catch {
+    // no audio: the banner and the open pane still carry the alarm
+  }
+};
 
 const useStyles = makeStyles()((theme) => ({
   pane: {
@@ -73,6 +93,8 @@ const RaceOpsPane = () => {
   const [open, setOpen] = usePersistedState('raceOpsPane', false);
   const [counts, setCounts] = useState(null);
   const [alarms, setAlarms] = useState(0);
+  const [latest, setLatest] = useState('');
+  const seenRef = useRef(null);
 
   useEffect(() => {
     const onMessage = (event) => {
@@ -82,18 +104,37 @@ const RaceOpsPane = () => {
       ) {
         return;
       }
-      const { type, deviceId, out, quiet, open: openAlarms } = event.data || {};
+      const {
+        type,
+        deviceId,
+        out,
+        quiet,
+        open: openAlarms,
+        keys,
+        latest: newest,
+      } = event.data || {};
       if (type === 'wlab:locate' && Number.isFinite(deviceId)) {
         dispatch(devicesActions.selectId(deviceId));
       } else if (type === 'wlab:raceops') {
         setCounts({ out, quiet });
       } else if (type === 'wlab:alarms') {
         setAlarms(Number(openAlarms) || 0);
+        setLatest(newest || '');
+        /* A press not seen before - a new incident or another press on an open
+           one - opens the pane and sounds, so an SOS cannot sit unnoticed behind
+           a closed tab. The first report after loading only records what is
+           already open: reloading the map must not replay old alarms. */
+        const current = new Set(keys || []);
+        if (seenRef.current && [...current].some((k) => !seenRef.current.has(k))) {
+          setOpen(true);
+          beep();
+        }
+        seenRef.current = current;
       }
     };
     window.addEventListener('message', onMessage);
     return () => window.removeEventListener('message', onMessage);
-  }, [dispatch]);
+  }, [dispatch, setOpen]);
 
   useEffect(() => {
     map.setPadding({ top: 0, bottom: 0, left: 0, right: open ? WIDTH : 0 });
@@ -124,6 +165,28 @@ const RaceOpsPane = () => {
   return (
     <>
       {tab}
+      {!open && alarms > 0 && (
+        <Alert
+          severity="error"
+          variant="filled"
+          sx={{
+            position: 'fixed',
+            top: 12,
+            left: '50%',
+            transform: 'translateX(-50%)',
+            zIndex: 6,
+            maxWidth: 'calc(100% - 24px)',
+          }}
+          action={
+            <Button color="inherit" size="small" onClick={() => setOpen(true)}>
+              Open
+            </Button>
+          }
+        >
+          {alarms > 1 ? `${alarms} SOS to action · ` : 'SOS to action · '}
+          {latest}
+        </Alert>
+      )}
       <Paper className={classes.pane} elevation={3} style={open ? undefined : { display: 'none' }}>
         <div className={classes.bar}>
           <Typography variant="subtitle2" sx={{ flex: 1 }} color={alarms ? 'error' : undefined}>
