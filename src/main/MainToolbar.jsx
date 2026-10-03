@@ -44,6 +44,14 @@ const useStyles = makeStyles()((theme) => ({
     minHeight: 'auto',
     padding: theme.spacing(0.75, 1.5),
   },
+  hostLogo: {
+    flex: '0 0 auto',
+    height: 30,
+    maxWidth: 120,
+    width: 'auto',
+    objectFit: 'contain',
+    display: 'block',
+  },
   filterPanel: {
     display: 'flex',
     flexDirection: 'column',
@@ -72,6 +80,12 @@ const MainToolbar = ({
   const t = useTranslation();
 
   const deviceReadonly = useDeviceReadonly();
+  const serverAttributes = useSelector((state) => state.session.server?.attributes) || {};
+  const serverTitle = useSelector((state) => state.session.server?.attributes?.title);
+  const hostLogo =
+    theme.palette.mode === 'dark'
+      ? serverAttributes.logoInverted || serverAttributes.logo
+      : serverAttributes.logo || serverAttributes.logoInverted;
   const kiosk = useKiosk();
 
   const groups = useSelector((state) => state.groups.items);
@@ -230,7 +244,7 @@ const MainToolbar = ({
         on a phone it is taking width from the search box, which is the one
         thing on this toolbar they actually use.
       */}
-      {!kiosk && (
+      {!kiosk && !(hostLogo && deviceReadonly) && (
         <IconButton onClick={() => navigate('/settings/device')} disabled={deviceReadonly}>
           <Tooltip
             open={!deviceReadonly && Object.keys(devices).length === 0}
@@ -241,6 +255,21 @@ const MainToolbar = ({
           </Tooltip>
         </IconButton>
       )}
+      {/*
+        THE HOST'S OWN LOGO ON THE MAP, not only on the sign-in page. Ryan,
+        2026-10-03, looking at hewc.wlab.co.za on a phone: the customer's brand
+        disappears the moment they sign in, and the slot it belongs in was
+        holding a "+" that their read-only account can never use. So on a
+        branded host the logo takes that corner, and the "+" stays only for an
+        account that may actually add a device (an administrator or a writer -
+        who then sees both). Hosts with no logo are unchanged.
+
+        Same asset choice as LogoImage: the inverted (light) logo on a dark
+        theme, where a dark-on-light logo would vanish into the toolbar.
+        Height-bound, so a wide wordmark and a square mark both fit the row
+        without pushing the search box off a 375px screen.
+      */}
+      {hostLogo && <img className={classes.hostLogo} src={hostLogo} alt={serverTitle || ''} />}
     </Toolbar>
   );
 };
