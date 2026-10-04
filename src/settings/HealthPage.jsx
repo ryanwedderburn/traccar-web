@@ -25,10 +25,11 @@ import { useAsyncTask } from '../reactHelper';
 import fetchOrThrow from '../common/util/fetchOrThrow';
 
 // Bump together with AthleteDataResource.CONSENT_VERSION when this wording changes.
-const CONSENT_TEXT = 'I agree that WLAB may store heart-rate and workout data from this service against my '
-  + 'account, to show it to me and to compare it with my tracking and bike data. It is health information: '
-  + 'it is never shown publicly or used for race results, nobody else sees it unless I share it, and '
-  + 'disconnecting stops collection and deletes the link. Riders under 18 need a parent or guardian to agree.';
+const CONSENT_TEXT =
+  'I agree that WLAB may store heart-rate and workout data from this service against my ' +
+  'account, to show it to me and to compare it with my tracking and bike data. It is health information: ' +
+  'it is never shown publicly or used for race results, nobody else sees it unless I share it, and ' +
+  'disconnecting stops collection and deletes the link. Riders under 18 need a parent or guardian to agree.';
 
 const formatDate = (value) => (value ? new Date(value).toLocaleString() : '-');
 
@@ -68,13 +69,18 @@ const ProviderCard = ({ provider, onChanged }) => {
     setBusy(true);
     setMessage(null);
     try {
-      const response = await fetchOrThrow(`/api/athlete/providers/${provider.provider}/link`, { method: 'DELETE' });
+      const response = await fetchOrThrow(`/api/athlete/providers/${provider.provider}/link`, {
+        method: 'DELETE',
+      });
       const result = await response.json();
-      const warning = `Disconnected here, but ${provider.name} reported: ${result.revokeError}. `
-        + `Remove WLAB in your ${provider.name} settings too.`;
-      setMessage(result.revokeError
-        ? { severity: 'warning', text: warning }
-        : { severity: 'success', text: `${provider.name} disconnected.` });
+      const warning =
+        `Disconnected here, but ${provider.name} reported: ${result.revokeError}. ` +
+        `Remove WLAB in your ${provider.name} settings too.`;
+      setMessage(
+        result.revokeError
+          ? { severity: 'warning', text: warning }
+          : { severity: 'success', text: `${provider.name} disconnected.` },
+      );
       onChanged();
     } catch (error) {
       setMessage({ severity: 'error', text: errorText(error) });
@@ -112,7 +118,9 @@ const ProviderCard = ({ provider, onChanged }) => {
               <Alert severity="info">{`${provider.name} is not available on this platform yet.`}</Alert>
             )}
             <FormControlLabel
-              control={<Checkbox checked={consent} onChange={(e) => setConsent(e.target.checked)} />}
+              control={
+                <Checkbox checked={consent} onChange={(e) => setConsent(e.target.checked)} />
+              }
               label={<Typography variant="body2">{CONSENT_TEXT}</Typography>}
               disabled={!provider.available}
             />
@@ -135,7 +143,8 @@ const IntegrationCard = ({ integration, onSaved }) => {
   const [clientId, setClientId] = useState(integration.clientId || '');
   const [clientSecret, setClientSecret] = useState('');
   const [redirectUri, setRedirectUri] = useState(
-    integration.redirectUri || `${window.location.origin}/api/athlete/callback/${integration.provider}`,
+    integration.redirectUri ||
+      `${window.location.origin}/api/athlete/callback/${integration.provider}`,
   );
   const [enabled, setEnabled] = useState(integration.enabled);
   const [message, setMessage] = useState(null);
@@ -172,13 +181,23 @@ const IntegrationCard = ({ integration, onSaved }) => {
         )}
         {message && <Alert severity={message.severity}>{message.text}</Alert>}
         <Typography variant="body2">
-          {`Register this redirect URL with ${integration.name} exactly as shown, `
-            + 'then paste the client ID and secret it gives you.'}
+          {`Register this redirect URL with ${integration.name} exactly as shown, ` +
+            'then paste the client ID and secret it gives you.'}
         </Typography>
-        <TextField label="Redirect URL" value={redirectUri} onChange={(e) => setRedirectUri(e.target.value)} />
-        <TextField label="Client ID" value={clientId} onChange={(e) => setClientId(e.target.value)} />
         <TextField
-          label={integration.secretSet ? 'Client secret (stored - leave blank to keep)' : 'Client secret'}
+          label="Redirect URL"
+          value={redirectUri}
+          onChange={(e) => setRedirectUri(e.target.value)}
+        />
+        <TextField
+          label="Client ID"
+          value={clientId}
+          onChange={(e) => setClientId(e.target.value)}
+        />
+        <TextField
+          label={
+            integration.secretSet ? 'Client secret (stored - leave blank to keep)' : 'Client secret'
+          }
           type="password"
           autoComplete="new-password"
           value={clientSecret}
@@ -188,7 +207,9 @@ const IntegrationCard = ({ integration, onSaved }) => {
           control={<Switch checked={enabled} onChange={(e) => setEnabled(e.target.checked)} />}
           label="Offer to users"
         />
-        <Button variant="contained" onClick={save}>Save</Button>
+        <Button variant="contained" onClick={save}>
+          Save
+        </Button>
         {integration.updated && (
           <Typography variant="caption">{`Last saved ${formatDate(integration.updated)}`}</Typography>
         )}
@@ -215,29 +236,42 @@ const HealthPage = () => {
       if (result === 'connected') {
         setBanner({ severity: 'success', text: `${name} connected.` });
       } else if (result === 'denied') {
-        setBanner({ severity: 'info', text: `${name} was not connected - permission was not granted.` });
+        setBanner({
+          severity: 'info',
+          text: `${name} was not connected - permission was not granted.`,
+        });
       } else {
-        setBanner({ severity: 'error', text: `${name} could not be connected${detail ? `: ${detail}` : '.'}` });
+        setBanner({
+          severity: 'error',
+          text: `${name} could not be connected${detail ? `: ${detail}` : '.'}`,
+        });
       }
       setSearchParams({}, { replace: true });
     }
   }, [searchParams, setSearchParams]);
 
-  useAsyncTask(async ({ signal }) => {
-    const response = await fetchOrThrow('/api/athlete/providers', { signal });
-    setProviders(await response.json());
-    if (admin) {
-      const adminResponse = await fetchOrThrow('/api/athlete/integrations', { signal });
-      setIntegrations(await adminResponse.json());
-    }
-  }, [admin, version]);
+  useAsyncTask(
+    async ({ signal }) => {
+      const response = await fetchOrThrow('/api/athlete/providers', { signal });
+      setProviders(await response.json());
+      if (admin) {
+        const adminResponse = await fetchOrThrow('/api/athlete/integrations', { signal });
+        setIntegrations(await adminResponse.json());
+      }
+    },
+    [admin, version],
+  );
 
   const refresh = () => setVersion((v) => v + 1);
 
   return (
     <PageLayout menu={<SettingsMenu />} breadcrumbs={['Connected services']}>
       <Container maxWidth="sm" className={classes.container}>
-        {banner && <Alert severity={banner.severity} onClose={() => setBanner(null)}>{banner.text}</Alert>}
+        {banner && (
+          <Alert severity={banner.severity} onClose={() => setBanner(null)}>
+            {banner.text}
+          </Alert>
+        )}
         <Typography variant="body2" sx={{ my: 2 }}>
           Link the apps that record your heart rate and workouts. Your data stays private to you.
         </Typography>
@@ -246,9 +280,15 @@ const HealthPage = () => {
         ))}
         {admin && integrations.length > 0 && (
           <>
-            <Typography variant="subtitle2" sx={{ mt: 4, mb: 1 }}>Administrator</Typography>
+            <Typography variant="subtitle2" sx={{ mt: 4, mb: 1 }}>
+              Administrator
+            </Typography>
             {integrations.map((integration) => (
-              <IntegrationCard key={integration.provider} integration={integration} onSaved={refresh} />
+              <IntegrationCard
+                key={integration.provider}
+                integration={integration}
+                onSaved={refresh}
+              />
             ))}
           </>
         )}
