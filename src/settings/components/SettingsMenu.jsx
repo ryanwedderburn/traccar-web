@@ -49,8 +49,8 @@ const SettingsMenu = () => {
         {(athleteUi || admin) && (
           <MenuItem
             title="Connected services"
-          link="/settings/health"
-          icon={<MonitorHeartIcon />}
+            link="/settings/health"
+            icon={<MonitorHeartIcon />}
             selected={location.pathname === '/settings/health'}
           />
         )}

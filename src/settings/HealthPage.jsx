@@ -88,9 +88,14 @@ const ProviderCard = ({ provider, onChanged }) => {
         method: 'POST',
       });
       const result = await response.json();
-      setMessage(result.error
-        ? { severity: 'warning', text: result.error }
-        : { severity: 'success', text: `${result.added} new session(s), ${result.seen} checked.` });
+      setMessage(
+        result.error
+          ? { severity: 'warning', text: result.error }
+          : {
+              severity: 'success',
+              text: `${result.added} new session(s), ${result.seen} checked.`,
+            },
+      );
       onChanged();
     } catch (error) {
       setMessage({ severity: 'error', text: errorText(error) });
@@ -107,11 +112,17 @@ const ProviderCard = ({ provider, onChanged }) => {
         method: 'DELETE',
       });
       const result = await response.json();
-      const warning = `Disconnected here, but ${provider.name} reported: ${result.revokeError}. `
-        + `Remove WLAB in your ${provider.name} settings too.`;
-      setMessage(result.revokeError
-        ? { severity: 'warning', text: warning }
-        : { severity: 'success', text: `${provider.name} disconnected, ${result.sessionsDeleted ?? 0} session(s) deleted.` });
+      const warning =
+        `Disconnected here, but ${provider.name} reported: ${result.revokeError}. ` +
+        `Remove WLAB in your ${provider.name} settings too.`;
+      setMessage(
+        result.revokeError
+          ? { severity: 'warning', text: warning }
+          : {
+              severity: 'success',
+              text: `${provider.name} disconnected, ${result.sessionsDeleted ?? 0} session(s) deleted.`,
+            },
+      );
       onChanged();
     } catch (error) {
       setMessage({ severity: 'error', text: errorText(error) });
@@ -254,12 +265,15 @@ const IntegrationCard = ({ integration, onSaved }) => {
 
 const SessionChart = ({ sessionId }) => {
   const [data, setData] = useState(null);
-  useAsyncTask(async ({ signal }) => {
-    const response = await fetchOrThrow(`/api/athlete/sessions/${sessionId}/samples`, { signal });
-    const samples = await response.json();
-    const start = samples.length ? samples[0][0] : 0;
-    setData(samples.map(([time, hr]) => ({ minute: (time - start) / 60000, hr })));
-  }, [sessionId]);
+  useAsyncTask(
+    async ({ signal }) => {
+      const response = await fetchOrThrow(`/api/athlete/sessions/${sessionId}/samples`, { signal });
+      const samples = await response.json();
+      const start = samples.length ? samples[0][0] : 0;
+      setData(samples.map(([time, hr]) => ({ minute: (time - start) / 60000, hr })));
+    },
+    [sessionId],
+  );
   if (!data) {
     return <Typography variant="caption">Loading...</Typography>;
   }
@@ -282,7 +296,14 @@ const SessionChart = ({ sessionId }) => {
             formatter={(value) => [`${value} bpm`, 'Heart rate']}
             labelFormatter={(v) => `${v.toFixed(1)} min`}
           />
-          <Line type="monotone" dataKey="hr" dot={false} strokeWidth={1.5} stroke="#e53935" isAnimationActive={false} />
+          <Line
+            type="monotone"
+            dataKey="hr"
+            dot={false}
+            strokeWidth={1.5}
+            stroke="#e53935"
+            isAnimationActive={false}
+          />
         </LineChart>
       </ResponsiveContainer>
     </Box>
@@ -294,14 +315,18 @@ const SessionsCard = ({ version }) => {
   const [sessions, setSessions] = useState([]);
   const [open, setOpen] = useState(null);
 
-  useAsyncTask(async ({ signal }) => {
-    const response = await fetchOrThrow('/api/athlete/sessions?days=60', { signal });
-    setSessions(await response.json());
-  }, [version]);
+  useAsyncTask(
+    async ({ signal }) => {
+      const response = await fetchOrThrow('/api/athlete/sessions?days=60', { signal });
+      setSessions(await response.json());
+    },
+    [version],
+  );
 
   const byId = Object.fromEntries(sessions.map((s) => [s.id, s]));
   const primaries = sessions.filter((s) => !s.duplicateOf);
-  const alsoOn = (id) => sessions.filter((s) => s.duplicateOf === id).map((s) => PROVIDER_NAMES[s.provider]);
+  const alsoOn = (id) =>
+    sessions.filter((s) => s.duplicateOf === id).map((s) => PROVIDER_NAMES[s.provider]);
 
   return (
     <Accordion defaultExpanded>
@@ -311,8 +336,8 @@ const SessionsCard = ({ version }) => {
       <AccordionDetails className={classes.details}>
         {!primaries.length ? (
           <Typography variant="body2">
-            No sessions yet. New workouts appear within 30 minutes of reaching Polar Flow or Strava, or use
-            Sync now. Polar only shares workouts uploaded after you connected.
+            No sessions yet. New workouts appear within 30 minutes of reaching Polar Flow or Strava,
+            or use Sync now. Polar only shares workouts uploaded after you connected.
           </Typography>
         ) : (
           <Table size="small">
