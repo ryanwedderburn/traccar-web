@@ -31,6 +31,7 @@ import useEquipmentUi from '../util/useEquipmentUi';
 import useSetupUi from '../util/useSetupUi';
 import useKiosk from '../util/useKiosk';
 import useTools from '../util/useTools';
+import useAthleteUi from '../util/useAthleteUi';
 import WaypointsDialog from './WaypointsDialog';
 import SponsorsDialog from './SponsorsDialog';
 import useSponsors from '../util/useSponsors';
@@ -78,6 +79,7 @@ const BottomMenu = ({ routeFilter }) => {
    * setups, so we should cater for that upfront". See useTools.js.
    */
   const tools = useTools();
+  const athleteUi = useAthleteUi();
 
   /*
    * WHERE A READONLY ACCOUNT GOES TO WATCH THE WHOLE FIELD.
@@ -495,6 +497,19 @@ const BottomMenu = ({ routeFilter }) => {
           but English, and an empty menu item is a worse outcome than an
           untranslated one.
         */}
+        {/* Rider health data (docs/RIDER-HEALTH.md). In this menu, not only in
+            Settings, because the people it is for - riders - are readonly and
+            have no Settings tab. Literal English, same rule as above. */}
+        {athleteUi && !kiosk && (
+          <MenuItem
+            onClick={() => {
+              setAnchorEl(null);
+              navigate('/settings/health');
+            }}
+          >
+            <Typography color="textPrimary">Connected services</Typography>
+          </MenuItem>
+        )}
         {tools.map((tool) => (
           <MenuItem key={tool.id} onClick={() => handleTool(tool.href)}>
             <Typography color="textPrimary">{tool.label}</Typography>

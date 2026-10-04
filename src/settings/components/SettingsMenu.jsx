@@ -20,6 +20,7 @@ import { useSelector } from 'react-redux';
 import { useTranslation } from '../../common/components/LocalizationProvider';
 import { useAdministrator, useManager, useRestriction } from '../../common/util/permissions';
 import useFeatures from '../../common/util/useFeatures';
+import useAthleteUi from '../../common/util/useAthleteUi';
 import MenuItem from '../../common/components/MenuItem';
 
 const SettingsMenu = () => {
@@ -34,6 +35,7 @@ const SettingsMenu = () => {
   const billingLink = useSelector((state) => state.session.user.attributes.billingLink);
 
   const features = useFeatures();
+  const athleteUi = useAthleteUi();
 
   return (
     <>
@@ -44,12 +46,14 @@ const SettingsMenu = () => {
           icon={<TuneIcon />}
           selected={location.pathname === '/settings/preferences'}
         />
-        <MenuItem
-          title="Connected services"
+        {(athleteUi || admin) && (
+          <MenuItem
+            title="Connected services"
           link="/settings/health"
           icon={<MonitorHeartIcon />}
-          selected={location.pathname === '/settings/health'}
-        />
+            selected={location.pathname === '/settings/health'}
+          />
+        )}
         {!readonly && (
           <>
             <MenuItem
