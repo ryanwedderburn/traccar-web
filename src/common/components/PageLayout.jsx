@@ -75,7 +75,7 @@ const PageTitle = ({ breadcrumbs }) => {
   if (desktop) {
     return (
       <Typography variant="h6" noWrap>
-        {t(breadcrumbs[0])}
+        {t(breadcrumbs[0]) ?? breadcrumbs[0]}
       </Typography>
     );
   }
@@ -83,11 +83,11 @@ const PageTitle = ({ breadcrumbs }) => {
     <Breadcrumbs>
       {breadcrumbs.slice(0, -1).map((breadcrumb) => (
         <Typography variant="h6" color="inherit" key={breadcrumb}>
-          {t(breadcrumb)}
+          {t(breadcrumb) ?? breadcrumb}
         </Typography>
       ))}
       <Typography variant="h6" color="textPrimary">
-        {t(breadcrumbs[breadcrumbs.length - 1])}
+        {t(breadcrumbs[breadcrumbs.length - 1]) ?? breadcrumbs[breadcrumbs.length - 1]}
       </Typography>
     </Breadcrumbs>
   );

@@ -60,6 +60,7 @@ const UserConnectionsPage = lazy(() => import('./settings/UserConnectionsPage'))
 const LogsPage = lazy(() => import('./reports/LogsPage'));
 const SharePage = lazy(() => import('./settings/SharePage'));
 const AnnouncementPage = lazy(() => import('./settings/AnnouncementPage'));
+const HealthPage = lazy(() => import('./settings/HealthPage'));
 const EmulatorPage = lazy(() => import('./other/EmulatorPage'));
 const StreamPage = lazy(() => import('./other/StreamPage'));
 const AuditPage = lazy(() => import('./reports/AuditPage'));
@@ -174,6 +175,7 @@ const Navigation = () => {
             <Route path="notification/:id" element={<NotificationPage />} />
             <Route path="notification" element={<NotificationPage />} />
             <Route path="preferences" element={<PreferencesPage />} />
+            <Route path="health" element={<HealthPage />} />
             <Route path="server" element={<ServerPage />} />
             <Route path="users" element={<UsersPage />} />
             <Route path="user/:id/connections" element={<UserConnectionsPage />} />

@@ -14,6 +14,7 @@ import HelpIcon from '@mui/icons-material/Help';
 import PaymentIcon from '@mui/icons-material/Payment';
 import CampaignIcon from '@mui/icons-material/Campaign';
 import CalculateIcon from '@mui/icons-material/Calculate';
+import MonitorHeartIcon from '@mui/icons-material/MonitorHeart';
 import { useLocation } from 'react-router-dom';
 import { useSelector } from 'react-redux';
 import { useTranslation } from '../../common/components/LocalizationProvider';
@@ -42,6 +43,12 @@ const SettingsMenu = () => {
           link="/settings/preferences"
           icon={<TuneIcon />}
           selected={location.pathname === '/settings/preferences'}
+        />
+        <MenuItem
+          title="Connected services"
+          link="/settings/health"
+          icon={<MonitorHeartIcon />}
+          selected={location.pathname === '/settings/health'}
         />
         {!readonly && (
           <>
