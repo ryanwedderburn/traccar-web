@@ -16,6 +16,7 @@ import EditItemView from './components/EditItemView';
 import EditAttributesAccordion from './components/EditAttributesAccordion';
 import SelectField from '../common/components/SelectField';
 import deviceCategories from '../common/util/deviceCategories';
+import { DEVICE_ROLES, roleByCategory, roleName } from '../common/util/deviceRoles';
 import { useTranslation } from '../common/components/LocalizationProvider';
 import useDeviceAttributes from '../common/attributes/useDeviceAttributes';
 import { useManager } from '../common/util/permissions';
@@ -125,6 +126,31 @@ const DevicePage = () => {
                   }))
                   .sort((a, b) => a.name.localeCompare(b.name))}
                 label={t('deviceCategory')}
+              />
+              {/* OURS: what the device is - decides which features apply (DeviceRole). */}
+              <SelectField
+                value={item.attributes?.role || 'auto'}
+                onChange={(event) => {
+                  // eslint-disable-next-line no-unused-vars
+                  const { role, ...rest } = item.attributes || {};
+                  const value = event.target.value;
+                  setItem({
+                    ...item,
+                    attributes: value && value !== 'auto' ? { ...rest, role: value } : rest,
+                  });
+                }}
+                data={[
+                  {
+                    id: 'auto',
+                    name: `Automatic - ${roleName(roleByCategory(item.category || 'default'))}`,
+                  },
+                  ...DEVICE_ROLES,
+                ]}
+                label="Role"
+                helperText={
+                  DEVICE_ROLES.find((role) => role.id === item.attributes?.role)?.help ||
+                  'From the category. A device in an event class counts as a competitor.'
+                }
               />
               <SelectField
                 value={item.calendarId}
