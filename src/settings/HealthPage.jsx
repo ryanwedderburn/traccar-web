@@ -323,6 +323,12 @@ const SessionChart = ({ sessionId }) => {
   if (!data.length) {
     return <Typography variant="caption">No heart-rate samples in this session.</Typography>;
   }
+  // Round axis: 60, 80 ... 180, not 65 ... 161.
+  const values = data.map((d) => d.hr);
+  const low = Math.floor((Math.min(...values) - 5) / 10) * 10;
+  const step = Math.max(...values) - low > 100 ? 20 : 10;
+  const high = low + Math.ceil((Math.max(...values) + 5 - low) / step) * step;
+  const ticks = Array.from({ length: (high - low) / step + 1 }, (_, i) => low + i * step);
   return (
     <Box sx={{ width: '100%', height: 200 }}>
       <ResponsiveContainer>
@@ -334,7 +340,7 @@ const SessionChart = ({ sessionId }) => {
             tickFormatter={(v) => `${Math.round(v)}`}
             unit=" min"
           />
-          <YAxis domain={['dataMin - 5', 'dataMax + 5']} unit="" />
+          <YAxis domain={[low, high]} ticks={ticks} allowDataOverflow={false} />
           <Tooltip
             formatter={(value) => [`${value} bpm`, 'Heart rate']}
             labelFormatter={(v) => `${v.toFixed(1)} min`}
@@ -695,7 +701,7 @@ const HealthPage = () => {
 
   return (
     <PageLayout menu={<SettingsMenu />} breadcrumbs={['Connected services']}>
-      <Container maxWidth="sm" className={classes.container}>
+      <Container maxWidth="md" className={classes.container}>
         {banner && (
           <Alert severity={banner.severity} onClose={() => setBanner(null)}>
             {banner.text}
