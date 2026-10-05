@@ -53,7 +53,8 @@ const formatSport = (sport) => {
 };
 
 // Garmin's brand terms require the source to be named wherever its data is shown.
-const sourceLabel = (s) => (s.provider === 'file' && s.device ? `File (${s.device})` : PROVIDER_NAMES[s.provider]);
+const sourceLabel = (s) =>
+  s.provider === 'file' && s.device ? `File (${s.device})` : PROVIDER_NAMES[s.provider];
 
 const formatDuration = (seconds) => {
   const h = Math.floor(seconds / 3600);
@@ -348,14 +349,11 @@ const UploadCard = ({ onChanged }) => {
     const results = [];
     for (const file of files) {
       try {
-        const response = await fetchOrThrow(
-          `/api/athlete/upload${agreed ? '' : '?consent=true'}`,
-          {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/octet-stream' },
-            body: file,
-          },
-        );
+        const response = await fetchOrThrow(`/api/athlete/upload${agreed ? '' : '?consent=true'}`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/octet-stream' },
+          body: file,
+        });
         const result = await response.json();
         results.push(
           result.duplicate
@@ -380,7 +378,9 @@ const UploadCard = ({ onChanged }) => {
     try {
       const response = await fetchOrThrow('/api/athlete/uploads', { method: 'DELETE' });
       const result = await response.json();
-      setMessages([{ severity: 'success', text: `${result.sessionsDeleted} uploaded session(s) deleted.` }]);
+      setMessages([
+        { severity: 'success', text: `${result.sessionsDeleted} uploaded session(s) deleted.` },
+      ]);
       setConsent(false);
       setVersion((v) => v + 1);
       onChanged();
@@ -459,8 +459,7 @@ const SessionsCard = ({ version }) => {
 
   const byId = Object.fromEntries(sessions.map((s) => [s.id, s]));
   const primaries = sessions.filter((s) => !s.duplicateOf);
-  const alsoOn = (id) =>
-    sessions.filter((s) => s.duplicateOf === id).map(sourceLabel);
+  const alsoOn = (id) => sessions.filter((s) => s.duplicateOf === id).map(sourceLabel);
 
   return (
     <Accordion defaultExpanded>
@@ -496,9 +495,7 @@ const SessionsCard = ({ version }) => {
                     <TableCell>{formatSport(s.sport)}</TableCell>
                     <TableCell>{formatDuration(s.duration)}</TableCell>
                     <TableCell>{s.avgHr ? `${s.avgHr} / ${s.maxHr ?? '-'}` : '-'}</TableCell>
-                    <TableCell>
-                      {[sourceLabel(s), ...alsoOn(s.id)].join(' + ')}
-                    </TableCell>
+                    <TableCell>{[sourceLabel(s), ...alsoOn(s.id)].join(' + ')}</TableCell>
                   </TableRow>
                   {open === s.id && byId[s.id] && (
                     <TableRow>
