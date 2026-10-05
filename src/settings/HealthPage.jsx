@@ -38,7 +38,22 @@ const CONSENT_TEXT =
   'it is never shown publicly or used for race results, nobody else sees it unless I share it, and ' +
   'disconnecting stops collection and deletes the link. Riders under 18 need a parent or guardian to agree.';
 
-const PROVIDER_NAMES = { polar: 'Polar Flow', strava: 'Strava' };
+const PROVIDER_NAMES = { polar: 'Polar Flow', strava: 'Strava', file: 'File' };
+
+// "HighIntensityIntervalTraining" (Strava) or "FITNESS_EQUIPMENT" (FIT/Polar) -> "High intensity interval training".
+const formatSport = (sport) => {
+  if (!sport) {
+    return '-';
+  }
+  const words = sport
+    .replace(/([a-z])([A-Z])/g, '$1 $2')
+    .replaceAll('_', ' ')
+    .toLowerCase();
+  return words.charAt(0).toUpperCase() + words.slice(1);
+};
+
+// Garmin's brand terms require the source to be named wherever its data is shown.
+const sourceLabel = (s) => (s.provider === 'file' && s.device ? `File (${s.device})` : PROVIDER_NAMES[s.provider]);
 
 const formatDuration = (seconds) => {
   const h = Math.floor(seconds / 3600);
@@ -310,6 +325,125 @@ const SessionChart = ({ sessionId }) => {
   );
 };
 
+const UploadCard = ({ onChanged }) => {
+  const { classes } = useSettingsStyles();
+  const [state, setState] = useState(null);
+  const [consent, setConsent] = useState(false);
+  const [busy, setBusy] = useState(false);
+  const [messages, setMessages] = useState([]);
+  const [version, setVersion] = useState(0);
+
+  useAsyncTask(
+    async ({ signal }) => {
+      const response = await fetchOrThrow('/api/athlete/uploads', { signal });
+      setState(await response.json());
+    },
+    [version],
+  );
+
+  const agreed = Boolean(state?.consentAt);
+
+  const upload = async (files) => {
+    setBusy(true);
+    const results = [];
+    for (const file of files) {
+      try {
+        const response = await fetchOrThrow(
+          `/api/athlete/upload${agreed ? '' : '?consent=true'}`,
+          {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/octet-stream' },
+            body: file,
+          },
+        );
+        const result = await response.json();
+        results.push(
+          result.duplicate
+            ? { severity: 'info', text: `${file.name}: already uploaded.` }
+            : {
+                severity: 'success',
+                text: `${file.name}: ${formatSport(result.sport)}, ${formatDate(result.start)}, ${formatDuration(result.duration)}, ${result.samples} heart-rate samples.`,
+              },
+        );
+      } catch (error) {
+        results.push({ severity: 'error', text: `${file.name}: ${errorText(error)}` });
+      }
+    }
+    setMessages(results);
+    setBusy(false);
+    setVersion((v) => v + 1);
+    onChanged();
+  };
+
+  const remove = async () => {
+    setBusy(true);
+    try {
+      const response = await fetchOrThrow('/api/athlete/uploads', { method: 'DELETE' });
+      const result = await response.json();
+      setMessages([{ severity: 'success', text: `${result.sessionsDeleted} uploaded session(s) deleted.` }]);
+      setConsent(false);
+      setVersion((v) => v + 1);
+      onChanged();
+    } catch (error) {
+      setMessages([{ severity: 'error', text: errorText(error) }]);
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  return (
+    <Accordion defaultExpanded>
+      <AccordionSummary expandIcon={<ExpandMoreIcon />}>
+        <Typography variant="subtitle1">
+          {`Upload workout files${state?.sessions ? ` (${state.sessions})` : ''}`}
+        </Typography>
+      </AccordionSummary>
+      <AccordionDetails className={classes.details}>
+        <Typography variant="body2">
+          For Garmin and any other device: export the activity file and upload it here. In Garmin
+          Connect open the activity, then the gear icon and Export Original. .fit, .fit.gz and .zip
+          files are accepted; several can be chosen at once.
+        </Typography>
+        {messages.map((m) => (
+          <Alert key={m.text} severity={m.severity}>
+            {m.text}
+          </Alert>
+        ))}
+        {!agreed && (
+          <FormControlLabel
+            control={<Checkbox checked={consent} onChange={(e) => setConsent(e.target.checked)} />}
+            label={<Typography variant="body2">{CONSENT_TEXT}</Typography>}
+          />
+        )}
+        <Button variant="contained" component="label" disabled={busy || (!agreed && !consent)}>
+          {busy ? 'Uploading...' : 'Choose files'}
+          <input
+            hidden
+            multiple
+            type="file"
+            accept=".fit,.zip,.gz"
+            onChange={(e) => {
+              const files = Array.from(e.target.files || []);
+              e.target.value = '';
+              if (files.length) {
+                upload(files);
+              }
+            }}
+          />
+        </Button>
+        {agreed && (
+          <>
+            <Typography variant="body2">{`Consent given ${formatDate(state.consentAt)}`}</Typography>
+            <Button variant="outlined" color="error" disabled={busy} onClick={remove}>
+              Delete uploaded sessions
+            </Button>
+          </>
+        )}
+      </AccordionDetails>
+    </Accordion>
+  );
+};
+
 const SessionsCard = ({ version }) => {
   const { classes } = useSettingsStyles();
   const [sessions, setSessions] = useState([]);
@@ -326,7 +460,7 @@ const SessionsCard = ({ version }) => {
   const byId = Object.fromEntries(sessions.map((s) => [s.id, s]));
   const primaries = sessions.filter((s) => !s.duplicateOf);
   const alsoOn = (id) =>
-    sessions.filter((s) => s.duplicateOf === id).map((s) => PROVIDER_NAMES[s.provider]);
+    sessions.filter((s) => s.duplicateOf === id).map(sourceLabel);
 
   return (
     <Accordion defaultExpanded>
@@ -359,11 +493,11 @@ const SessionsCard = ({ version }) => {
                     onClick={() => setOpen(open === s.id ? null : s.id)}
                   >
                     <TableCell>{formatDate(s.start)}</TableCell>
-                    <TableCell>{(s.sport || '-').replaceAll('_', ' ').toLowerCase()}</TableCell>
+                    <TableCell>{formatSport(s.sport)}</TableCell>
                     <TableCell>{formatDuration(s.duration)}</TableCell>
                     <TableCell>{s.avgHr ? `${s.avgHr} / ${s.maxHr ?? '-'}` : '-'}</TableCell>
                     <TableCell>
-                      {[PROVIDER_NAMES[s.provider], ...alsoOn(s.id)].join(' + ')}
+                      {[sourceLabel(s), ...alsoOn(s.id)].join(' + ')}
                     </TableCell>
                   </TableRow>
                   {open === s.id && byId[s.id] && (
@@ -444,7 +578,8 @@ const HealthPage = () => {
         {providers.map((provider) => (
           <ProviderCard key={provider.provider} provider={provider} onChanged={refresh} />
         ))}
-        {providers.some((p) => p.link) && <SessionsCard version={version} />}
+        <UploadCard onChanged={refresh} />
+        <SessionsCard version={version} />
         {admin && integrations.length > 0 && (
           <>
             <Typography variant="subtitle2" sx={{ mt: 4, mb: 1 }}>
