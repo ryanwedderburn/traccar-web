@@ -1,7 +1,7 @@
-// OURS, not upstream: Settings - Connected services (docs/RIDER-HEALTH.md, increment 1).
+// OURS, not upstream: Settings - Connected services (docs/RIDER-HEALTH.md, increments 1-4).
 // A user links Polar or Strava to their own account; an administrator enters the platform's
 // client credentials. Every step is on this screen - no .env edits, no scripts.
-import { Fragment, useEffect, useState } from 'react';
+import { Fragment, useEffect, useRef, useState } from 'react';
 import { useSearchParams } from 'react-router-dom';
 import {
   Accordion,
@@ -13,6 +13,9 @@ import {
   Checkbox,
   Container,
   FormControlLabel,
+  List,
+  ListItemButton,
+  ListItemText,
   Switch,
   TextField,
   Table,
@@ -20,7 +23,11 @@ import {
   TableCell,
   TableHead,
   TableRow,
+  ToggleButton,
+  ToggleButtonGroup,
   Typography,
+  useMediaQuery,
+  useTheme,
 } from '@mui/material';
 import ExpandMoreIcon from '@mui/icons-material/ExpandMore';
 import { LineChart, Line, XAxis, YAxis, Tooltip, ResponsiveContainer } from 'recharts';
@@ -199,13 +206,28 @@ const ProviderCard = ({ provider, onChanged }) => {
   );
 };
 
-const IntegrationCard = ({ integration, onSaved }) => {
+// One callback host serves every brand (the callback sends each user back to the host they
+// started on), so a new integration reuses the host already registered for another provider and
+// only falls back to the host this page is open on when nothing is registered yet.
+const defaultRedirect = (provider, integrations) => {
+  const registered = integrations.find((i) => i.redirectUri)?.redirectUri;
+  let origin = window.location.origin;
+  if (registered) {
+    try {
+      origin = new URL(registered).origin;
+    } catch {
+      // keep the current host
+    }
+  }
+  return `${origin}/api/athlete/callback/${provider}`;
+};
+
+const IntegrationCard = ({ integration, integrations, onSaved }) => {
   const { classes } = useSettingsStyles();
   const [clientId, setClientId] = useState(integration.clientId || '');
   const [clientSecret, setClientSecret] = useState('');
   const [redirectUri, setRedirectUri] = useState(
-    integration.redirectUri ||
-      `${window.location.origin}/api/athlete/callback/${integration.provider}`,
+    integration.redirectUri || defaultRedirect(integration.provider, integrations),
   );
   const [enabled, setEnabled] = useState(integration.enabled);
   const [message, setMessage] = useState(null);
@@ -249,6 +271,11 @@ const IntegrationCard = ({ integration, onSaved }) => {
           label="Redirect URL"
           value={redirectUri}
           onChange={(e) => setRedirectUri(e.target.value)}
+          helperText={
+            integration.redirectUri
+              ? 'Registered - change only if you change it with the provider too.'
+              : 'Suggested - check the host is the one registered with the provider.'
+          }
         />
         <TextField
           label="Client ID"
@@ -326,7 +353,7 @@ const SessionChart = ({ sessionId }) => {
   );
 };
 
-const UploadCard = ({ onChanged }) => {
+const UploadCard = ({ onChanged, onShow }) => {
   const { classes } = useSettingsStyles();
   const [state, setState] = useState(null);
   const [consent, setConsent] = useState(false);
@@ -355,12 +382,14 @@ const UploadCard = ({ onChanged }) => {
           body: file,
         });
         const result = await response.json();
+        const show = { id: result.sessionId, start: result.start };
         results.push(
           result.duplicate
-            ? { severity: 'info', text: `${file.name}: already uploaded.` }
+            ? { severity: 'info', text: `${file.name}: already uploaded.`, show }
             : {
                 severity: 'success',
                 text: `${file.name}: ${formatSport(result.sport)}, ${formatDate(result.start)}, ${formatDuration(result.duration)}, ${result.samples} heart-rate samples.`,
+                show,
               },
         );
       } catch (error) {
@@ -405,7 +434,17 @@ const UploadCard = ({ onChanged }) => {
           files are accepted; several can be chosen at once.
         </Typography>
         {messages.map((m) => (
-          <Alert key={m.text} severity={m.severity}>
+          <Alert
+            key={m.text}
+            severity={m.severity}
+            action={
+              m.show?.id ? (
+                <Button color="inherit" size="small" onClick={() => onShow(m.show)}>
+                  View
+                </Button>
+              ) : null
+            }
+          >
             {m.text}
           </Alert>
         ))}
@@ -444,70 +483,162 @@ const UploadCard = ({ onChanged }) => {
   );
 };
 
-const SessionsCard = ({ version }) => {
+const PERIODS = [
+  { days: 60, label: '60 days' },
+  { days: 365, label: '1 year' },
+  { days: 0, label: 'All' },
+];
+
+const periodTitle = (days) => (days ? `last ${PERIODS.find((p) => p.days === days).label}` : 'all');
+
+// The smallest period that still contains a session that started at the given time.
+const periodFor = (start) => {
+  const age = (Date.now() - new Date(start).getTime()) / 86_400_000;
+  return PERIODS.find((p) => p.days && age < p.days - 1)?.days ?? 0;
+};
+
+const SessionsCard = ({ version, focus }) => {
   const { classes } = useSettingsStyles();
+  const theme = useTheme();
+  const phone = useMediaQuery(theme.breakpoints.down('sm'));
+  const [period, setPeriod] = useState(60);
   const [sessions, setSessions] = useState([]);
   const [open, setOpen] = useState(null);
+  const [expanded, setExpanded] = useState(true);
+  const scrollTo = useRef(null);
+
+  // "View" on an upload: widen the period if the session is older than it, open its chart.
+  useEffect(() => {
+    if (focus?.id) {
+      const needed = periodFor(focus.start);
+      setPeriod((current) => (current === 0 || (needed && needed <= current) ? current : needed));
+      setOpen(focus.id);
+      setExpanded(true);
+      scrollTo.current = focus.id;
+    }
+  }, [focus]);
 
   useAsyncTask(
     async ({ signal }) => {
-      const response = await fetchOrThrow('/api/athlete/sessions?days=60', { signal });
+      const response = await fetchOrThrow(`/api/athlete/sessions?days=${period}`, { signal });
       setSessions(await response.json());
     },
-    [version],
+    [version, period],
   );
 
-  const byId = Object.fromEntries(sessions.map((s) => [s.id, s]));
+  useEffect(() => {
+    if (scrollTo.current && sessions.some((s) => s.id === scrollTo.current)) {
+      document
+        .getElementById(`session-${scrollTo.current}`)
+        ?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+      scrollTo.current = null;
+    }
+  }, [sessions, open]);
+
   const primaries = sessions.filter((s) => !s.duplicateOf);
   const alsoOn = (id) => sessions.filter((s) => s.duplicateOf === id).map(sourceLabel);
+  const sources = (s) => [sourceLabel(s), ...alsoOn(s.id)].join(' + ');
+  const heartRate = (s) => (s.avgHr ? `${s.avgHr} / ${s.maxHr ?? '-'}` : '-');
+  const toggle = (id) => setOpen(open === id ? null : id);
+
+  const table = (
+    <Table size="small">
+      <TableHead>
+        <TableRow>
+          <TableCell>When</TableCell>
+          <TableCell>Activity</TableCell>
+          <TableCell>Time</TableCell>
+          <TableCell>HR avg / max</TableCell>
+          <TableCell>Source</TableCell>
+        </TableRow>
+      </TableHead>
+      <TableBody>
+        {primaries.map((s) => (
+          <Fragment key={s.id}>
+            <TableRow
+              id={`session-${s.id}`}
+              hover
+              selected={open === s.id}
+              sx={{ cursor: 'pointer' }}
+              onClick={() => toggle(s.id)}
+            >
+              <TableCell>{formatDate(s.start)}</TableCell>
+              <TableCell>{formatSport(s.sport)}</TableCell>
+              <TableCell>{formatDuration(s.duration)}</TableCell>
+              <TableCell>{heartRate(s)}</TableCell>
+              <TableCell>{sources(s)}</TableCell>
+            </TableRow>
+            {open === s.id && (
+              <TableRow>
+                <TableCell colSpan={5}>
+                  <SessionChart sessionId={s.id} />
+                </TableCell>
+              </TableRow>
+            )}
+          </Fragment>
+        ))}
+      </TableBody>
+    </Table>
+  );
+
+  // Phones: one two-line entry per session instead of five squeezed columns.
+  const list = (
+    <List dense disablePadding>
+      {primaries.map((s) => (
+        <Fragment key={s.id}>
+          <ListItemButton
+            id={`session-${s.id}`}
+            divider
+            selected={open === s.id}
+            onClick={() => toggle(s.id)}
+          >
+            <ListItemText
+              primary={`${formatSport(s.sport)} - ${formatDuration(s.duration)}${s.avgHr ? ` - ${heartRate(s)} bpm` : ''}`}
+              secondary={`${formatDate(s.start)} - ${sources(s)}`}
+            />
+          </ListItemButton>
+          {open === s.id && (
+            <Box sx={{ py: 1 }}>
+              <SessionChart sessionId={s.id} />
+            </Box>
+          )}
+        </Fragment>
+      ))}
+    </List>
+  );
 
   return (
-    <Accordion defaultExpanded>
+    <Accordion expanded={expanded} onChange={(e, value) => setExpanded(value)}>
       <AccordionSummary expandIcon={<ExpandMoreIcon />}>
-        <Typography variant="subtitle1">{`Sessions - last 60 days (${primaries.length})`}</Typography>
+        <Typography variant="subtitle1">
+          {`Sessions - ${periodTitle(period)} (${primaries.length})`}
+        </Typography>
       </AccordionSummary>
       <AccordionDetails className={classes.details}>
+        <ToggleButtonGroup
+          size="small"
+          exclusive
+          value={period}
+          onChange={(e, value) => value !== null && setPeriod(value)}
+        >
+          {PERIODS.map((p) => (
+            <ToggleButton key={p.days} value={p.days}>
+              {p.label}
+            </ToggleButton>
+          ))}
+        </ToggleButtonGroup>
         {!primaries.length ? (
           <Typography variant="body2">
-            No sessions yet. New workouts appear within 30 minutes of reaching Polar Flow or Strava,
-            or use Sync now. Polar only shares workouts uploaded after you connected.
+            {period
+              ? 'No sessions in this period. New workouts appear within 30 minutes of reaching ' +
+                'Polar Flow or Strava, or use Sync now. Polar only shares workouts uploaded after ' +
+                'you connected.'
+              : 'No sessions yet.'}
           </Typography>
+        ) : phone ? (
+          list
         ) : (
-          <Table size="small">
-            <TableHead>
-              <TableRow>
-                <TableCell>When</TableCell>
-                <TableCell>Activity</TableCell>
-                <TableCell>Time</TableCell>
-                <TableCell>HR avg / max</TableCell>
-                <TableCell>Source</TableCell>
-              </TableRow>
-            </TableHead>
-            <TableBody>
-              {primaries.map((s) => (
-                <Fragment key={s.id}>
-                  <TableRow
-                    hover
-                    sx={{ cursor: 'pointer' }}
-                    onClick={() => setOpen(open === s.id ? null : s.id)}
-                  >
-                    <TableCell>{formatDate(s.start)}</TableCell>
-                    <TableCell>{formatSport(s.sport)}</TableCell>
-                    <TableCell>{formatDuration(s.duration)}</TableCell>
-                    <TableCell>{s.avgHr ? `${s.avgHr} / ${s.maxHr ?? '-'}` : '-'}</TableCell>
-                    <TableCell>{[sourceLabel(s), ...alsoOn(s.id)].join(' + ')}</TableCell>
-                  </TableRow>
-                  {open === s.id && byId[s.id] && (
-                    <TableRow>
-                      <TableCell colSpan={5}>
-                        <SessionChart sessionId={s.id} />
-                      </TableCell>
-                    </TableRow>
-                  )}
-                </Fragment>
-              ))}
-            </TableBody>
-          </Table>
+          table
         )}
       </AccordionDetails>
     </Accordion>
@@ -523,6 +654,7 @@ const HealthPage = () => {
   const [integrations, setIntegrations] = useState([]);
   const [version, setVersion] = useState(0);
   const [banner, setBanner] = useState(null);
+  const [focus, setFocus] = useState(null);
 
   useEffect(() => {
     const result = searchParams.get('result');
@@ -575,8 +707,8 @@ const HealthPage = () => {
         {providers.map((provider) => (
           <ProviderCard key={provider.provider} provider={provider} onChanged={refresh} />
         ))}
-        <UploadCard onChanged={refresh} />
-        <SessionsCard version={version} />
+        <UploadCard onChanged={refresh} onShow={(show) => setFocus({ ...show })} />
+        <SessionsCard version={version} focus={focus} />
         {admin && integrations.length > 0 && (
           <>
             <Typography variant="subtitle2" sx={{ mt: 4, mb: 1 }}>
@@ -586,6 +718,7 @@ const HealthPage = () => {
               <IntegrationCard
                 key={integration.provider}
                 integration={integration}
+                integrations={integrations}
                 onSaved={refresh}
               />
             ))}
