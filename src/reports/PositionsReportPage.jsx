@@ -3,6 +3,7 @@ import { useNavigate, useSearchParams } from 'react-router-dom';
 import { IconButton, Table, TableBody, TableCell, TableHead, TableRow } from '@mui/material';
 import GpsFixedIcon from '@mui/icons-material/GpsFixed';
 import LocationSearchingIcon from '@mui/icons-material/LocationSearching';
+import usePagedItems from './components/usePagedItems';
 import ReportFilter, { updateReportParams } from './components/ReportFilter';
 import { useTranslation } from '../common/components/LocalizationProvider';
 import PageLayout from '../common/components/PageLayout';
@@ -41,6 +42,7 @@ const PositionsReportPage = () => {
   const [available, setAvailable] = useState([]);
   const [columns, setColumns] = useState(['fixTime', 'latitude', 'longitude', 'speed', 'address']);
   const [items, setItems] = useState([]);
+  const [pagedItems, pagination] = usePagedItems(items, 'positions');
   const geofenceId = searchParams.has('geofenceId')
     ? parseInt(searchParams.get('geofenceId'))
     : null;
@@ -184,7 +186,7 @@ const PositionsReportPage = () => {
             </TableHead>
             <TableBody>
               {!loading ? (
-                items.slice(0, 4000).map((item) => (
+                pagedItems.map((item) => (
                   <TableRow key={item.id}>
                     <TableCell className={classes.columnAction} padding="none">
                       {selectedItem === item ? (
@@ -227,6 +229,7 @@ const PositionsReportPage = () => {
               )}
             </TableBody>
           </Table>
+          {pagination}
         </div>
       </div>
     </PageLayout>

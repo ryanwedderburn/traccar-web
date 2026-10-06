@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { useSearchParams } from 'react-router-dom';
 import {
   FormControl,
@@ -27,7 +27,19 @@ export const updateReportParams = (searchParams, setSearchParams, key, values) =
   setSearchParams(newParams, { replace: true });
 };
 
-const ReportFilter = ({ children, onShow, onExport, onSchedule, deviceType, loading, formats }) => {
+// OURS: how many of the most recently active devices a report opens on (REPORTING.md, list pages).
+const LATEST_DEVICES = 25;
+
+const ReportFilter = ({
+  children,
+  onShow,
+  onExport,
+  onSchedule,
+  deviceType,
+  loading,
+  formats,
+  autoLatest = true,
+}) => {
   const { classes } = useReportStyles();
   const t = useTranslation();
 
@@ -97,6 +109,53 @@ const ReportFilter = ({ children, onShow, onExport, onSchedule, deviceType, load
     return result;
   };
   const options = evaluateOptions();
+
+  /* OURS. A report never opens blank: with nothing chosen it shows the latest 24 hours of data
+     for the most recently active devices (one for single-device reports), and the filters then
+     narrow it. The choice is written into the filter fields, so the user sees what is shown. */
+  const latestDevices = useSelector((state) => state.devices.items);
+  const autoDone = useRef(false);
+  useEffect(() => {
+    if (!autoLatest || autoDone.current) {
+      return;
+    }
+    if (from || to || deviceIds.length || groupIds.length) {
+      autoDone.current = true;
+      return;
+    }
+    const recent = Object.values(latestDevices)
+      .filter((device) => device.lastUpdate)
+      .sort((a, b) => dayjs(b.lastUpdate).valueOf() - dayjs(a.lastUpdate).valueOf());
+    if (deviceType !== 'none' && !recent.length) {
+      return;
+    }
+    autoDone.current = true;
+    const end = dayjs();
+    const anchor = deviceType !== 'none' ? dayjs(recent[0].lastUpdate) : end;
+    const start = (anchor.isBefore(end) ? anchor : end).subtract(24, 'hour');
+    const newParams = new URLSearchParams(searchParams);
+    if (deviceType !== 'none') {
+      recent
+        .slice(0, deviceType === 'single' ? 1 : LATEST_DEVICES)
+        .forEach((device) => newParams.append('deviceId', device.id));
+    }
+    newParams.set('from', start.toISOString());
+    newParams.set('to', end.toISOString());
+    setPeriod('custom');
+    setCustomFrom(start.locale('en').format('YYYY-MM-DDTHH:mm'));
+    setCustomTo(end.locale('en').format('YYYY-MM-DDTHH:mm'));
+    setSearchParams(newParams, { replace: true });
+  }, [
+    autoLatest,
+    latestDevices,
+    from,
+    to,
+    deviceIds,
+    groupIds,
+    deviceType,
+    searchParams,
+    setSearchParams,
+  ]);
 
   useEffect(() => {
     if (from && to) {

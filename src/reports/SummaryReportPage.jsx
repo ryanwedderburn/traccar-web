@@ -20,6 +20,7 @@ import {
   formatTime,
   formatNumericHours,
 } from '../common/util/formatter';
+import usePagedItems from './components/usePagedItems';
 import ReportFilter, { updateReportParams } from './components/ReportFilter';
 import { useAttributePreference } from '../common/util/preferences';
 import { useTranslation } from '../common/components/LocalizationProvider';
@@ -70,6 +71,7 @@ const SummaryReportPage = () => {
   ]);
   const daily = searchParams.get('daily') === 'true';
   const [items, setItems] = useState([]);
+  const [pagedItems, pagination] = usePagedItems(items, 'summary');
   const [loading, setLoading] = useState(false);
 
   const onShow = useCatchCallback(
@@ -184,7 +186,7 @@ const SummaryReportPage = () => {
         </TableHead>
         <TableBody>
           {!loading ? (
-            items.map((item) => (
+            pagedItems.map((item) => (
               <TableRow key={`${item.deviceId}_${Date.parse(item.startTime)}`}>
                 <TableCell>{devices[item.deviceId].name}</TableCell>
                 {columns.map((key) => (
@@ -197,6 +199,7 @@ const SummaryReportPage = () => {
           )}
         </TableBody>
       </Table>
+      {pagination}
     </PageLayout>
   );
 };

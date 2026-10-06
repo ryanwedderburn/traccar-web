@@ -12,6 +12,7 @@ import {
   formatTime,
   formatNumericHours,
 } from '../common/util/formatter';
+import usePagedItems from './components/usePagedItems';
 import ReportFilter from './components/ReportFilter';
 import { useAttributePreference, usePreference } from '../common/util/preferences';
 import { useTranslation } from '../common/components/LocalizationProvider';
@@ -64,6 +65,7 @@ const StopReportPage = () => {
     'address',
   ]);
   const [items, setItems] = useState([]);
+  const [pagedItems, pagination] = usePagedItems(items, 'stop');
   const [loading, setLoading] = useState(false);
   const [selectedItem, setSelectedItem] = useState(null);
 
@@ -189,7 +191,7 @@ const StopReportPage = () => {
             </TableHead>
             <TableBody>
               {!loading ? (
-                items.map((item) => (
+                pagedItems.map((item) => (
                   <TableRow key={item.positionId}>
                     <TableCell className={classes.columnAction} padding="none">
                       {selectedItem === item ? (
@@ -213,6 +215,7 @@ const StopReportPage = () => {
               )}
             </TableBody>
           </Table>
+          {pagination}
         </div>
       </div>
     </PageLayout>

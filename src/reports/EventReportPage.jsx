@@ -6,6 +6,7 @@ import LocationSearchingIcon from '@mui/icons-material/LocationSearching';
 import { useSelector } from 'react-redux';
 import { useTheme } from '@mui/material/styles';
 import { formatAddress, formatNumber, formatSpeed, formatTime } from '../common/util/formatter';
+import usePagedItems from './components/usePagedItems';
 import ReportFilter, { updateReportParams } from './components/ReportFilter';
 import { prefixString, unprefixString } from '../common/util/stringUtils';
 import { useTranslation, useTranslationKeys } from '../common/components/LocalizationProvider';
@@ -73,6 +74,7 @@ const EventReportPage = () => {
   const eventTypes = useMemo(() => searchParams.getAll('eventType'), [searchParams]);
   const alarmTypes = useMemo(() => searchParams.getAll('alarmType'), [searchParams]);
   const [items, setItems] = useState([]);
+  const [pagedItems, pagination] = usePagedItems(items, 'event');
   const [positions, setPositions] = useState({});
   const [loading, setLoading] = useState(false);
   const [selectedItem, setSelectedItem] = useState(null);
@@ -307,7 +309,7 @@ const EventReportPage = () => {
             </TableHead>
             <TableBody>
               {!loading ? (
-                items.map((item) => (
+                pagedItems.map((item) => (
                   <TableRow key={item.id}>
                     <TableCell className={classes.columnAction} padding="none">
                       {(item.positionId &&
@@ -333,6 +335,7 @@ const EventReportPage = () => {
               )}
             </TableBody>
           </Table>
+          {pagination}
         </div>
       </div>
     </PageLayout>

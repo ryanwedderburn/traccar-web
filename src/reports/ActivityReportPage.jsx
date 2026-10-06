@@ -233,6 +233,7 @@ const ActivityReportPage = () => {
               onShow={onShow}
               onExport={onExport}
               deviceType="multiple"
+              autoLatest={false}
               loading={loading}
               formats={['xlsx']}
             >

@@ -14,6 +14,7 @@ import {
   formatTime,
   formatNumericHours,
 } from '../common/util/formatter';
+import usePagedItems from './components/usePagedItems';
 import ReportFilter from './components/ReportFilter';
 import { useAttributePreference, usePreference } from '../common/util/preferences';
 import { useTranslation } from '../common/components/LocalizationProvider';
@@ -73,6 +74,7 @@ const TripReportPage = () => {
     'averageSpeed',
   ]);
   const [items, setItems] = useState([]);
+  const [pagedItems, pagination] = usePagedItems(items, 'trip');
   const [loading, setLoading] = useState(false);
   const [selectedItem, setSelectedItem] = useState(null);
   const [route, setRoute] = useState(null);
@@ -261,7 +263,7 @@ const TripReportPage = () => {
             </TableHead>
             <TableBody>
               {!loading ? (
-                items.map((item) => (
+                pagedItems.map((item) => (
                   <TableRow key={item.startPositionId}>
                     <TableCell className={classes.columnAction} padding="none">
                       <div className={classes.columnActionContainer}>
@@ -290,6 +292,7 @@ const TripReportPage = () => {
               )}
             </TableBody>
           </Table>
+          {pagination}
         </div>
       </div>
     </PageLayout>

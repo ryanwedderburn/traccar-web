@@ -4,6 +4,7 @@ import { useSelector } from 'react-redux';
 import { useTheme } from '@mui/material/styles';
 import { Table, TableBody, TableCell, TableHead, TableRow } from '@mui/material';
 import { formatNumericHours, formatTime } from '../common/util/formatter';
+import usePagedItems from './components/usePagedItems';
 import ReportFilter, { updateReportParams } from './components/ReportFilter';
 import { useTranslation } from '../common/components/LocalizationProvider';
 import PageLayout from '../common/components/PageLayout';
@@ -43,6 +44,7 @@ const GeofenceReportPage = () => {
     'endTime',
   ]);
   const [items, setItems] = useState([]);
+  const [pagedItems, pagination] = usePagedItems(items, 'geofenceReport');
   const [loading, setLoading] = useState(false);
 
   const onShow = useCatchCallback(
@@ -132,7 +134,7 @@ const GeofenceReportPage = () => {
         </TableHead>
         <TableBody>
           {!loading ? (
-            items.map((item) => (
+            pagedItems.map((item) => (
               <TableRow
                 key={`${item.deviceId}_${item.geofenceId}_${item.startTime}_${item.endTime}`}
               >
@@ -147,6 +149,7 @@ const GeofenceReportPage = () => {
           )}
         </TableBody>
       </Table>
+      {pagination}
     </PageLayout>
   );
 };

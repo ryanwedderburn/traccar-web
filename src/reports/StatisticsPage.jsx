@@ -4,6 +4,7 @@ import { formatTime } from '../common/util/formatter';
 import { useTranslation } from '../common/components/LocalizationProvider';
 import PageLayout from '../common/components/PageLayout';
 import ReportsMenu from './components/ReportsMenu';
+import usePagedItems from './components/usePagedItems';
 import ReportFilter from './components/ReportFilter';
 import usePersistedState from '../common/util/usePersistedState';
 import ColumnSelect from './components/ColumnSelect';
@@ -37,6 +38,7 @@ const StatisticsPage = () => {
     'messagesStored',
   ]);
   const [items, setItems] = useState([]);
+  const [pagedItems, pagination] = usePagedItems(items, 'statistics');
   const [loading, setLoading] = useState(false);
 
   const onShow = useCatchCallback(async ({ from, to }) => {
@@ -67,7 +69,7 @@ const StatisticsPage = () => {
         </TableHead>
         <TableBody>
           {!loading ? (
-            items.map((item) => (
+            pagedItems.map((item) => (
               <TableRow key={item.id}>
                 {columns.map((key) => (
                   <TableCell key={key}>
@@ -81,6 +83,7 @@ const StatisticsPage = () => {
           )}
         </TableBody>
       </Table>
+      {pagination}
     </PageLayout>
   );
 };

@@ -4,6 +4,7 @@ import { formatTime } from '../common/util/formatter';
 import { useTranslation } from '../common/components/LocalizationProvider';
 import PageLayout from '../common/components/PageLayout';
 import ReportsMenu from './components/ReportsMenu';
+import usePagedItems from './components/usePagedItems';
 import ReportFilter from './components/ReportFilter';
 import usePersistedState from '../common/util/usePersistedState';
 import ColumnSelect from './components/ColumnSelect';
@@ -33,6 +34,7 @@ const AuditPage = () => {
     'objectType',
   ]);
   const [items, setItems] = useState([]);
+  const [pagedItems, pagination] = usePagedItems(items, 'audit');
   const [loading, setLoading] = useState(false);
 
   const onShow = useCatchCallback(async ({ from, to }) => {
@@ -63,7 +65,7 @@ const AuditPage = () => {
         </TableHead>
         <TableBody>
           {!loading ? (
-            items.map((item) => (
+            pagedItems.map((item) => (
               <TableRow key={item.id}>
                 {columns.map((key) => (
                   <TableCell key={key}>
@@ -77,6 +79,7 @@ const AuditPage = () => {
           )}
         </TableBody>
       </Table>
+      {pagination}
     </PageLayout>
   );
 };
