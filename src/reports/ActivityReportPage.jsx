@@ -1,10 +1,19 @@
 // OURS, not upstream. Activities (REPORTING.md, step R1): rides, drives and walks detected from
 // positions by the server (/api/activities), per device role. Modelled on TripReportPage.
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useSelector } from 'react-redux';
 import { useTheme } from '@mui/material/styles';
-import { IconButton, Table, TableBody, TableCell, TableHead, TableRow } from '@mui/material';
+import {
+  IconButton,
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TablePagination,
+  TableRow,
+  Typography,
+} from '@mui/material';
 import GpsFixedIcon from '@mui/icons-material/GpsFixed';
 import LocationSearchingIcon from '@mui/icons-material/LocationSearching';
 import RouteIcon from '@mui/icons-material/Route';
@@ -76,6 +85,12 @@ const ActivityReportPage = () => {
   const [loading, setLoading] = useState(false);
   const [selectedItem, setSelectedItem] = useState(null);
   const [route, setRoute] = useState(null);
+  // Latest mode: on arrival the page lists the newest stored activities, a page at a time.
+  // Pressing Show switches to the chosen devices and period; Latest returns to the feed.
+  const [latest, setLatest] = useState(true);
+  const [page, setPage] = useState(0);
+  const [rowsPerPage, setRowsPerPage] = usePersistedState('activityRowsPerPage', 50);
+  const [hasMore, setHasMore] = useState(false);
 
   const createMarkers = () => [
     { latitude: selectedItem.startLat, longitude: selectedItem.startLon, image: 'start-success' },
@@ -102,7 +117,31 @@ const ActivityReportPage = () => {
     [selectedItem],
   );
 
+  const loadLatest = useCatchCallback(async (pageIndex, size) => {
+    const query = new URLSearchParams({ limit: size + 1, offset: pageIndex * size });
+    setLoading(true);
+    setSelectedItem(null);
+    try {
+      const response = await fetchOrThrow(`/api/activities/latest?${query.toString()}`, {
+        headers: { Accept: 'application/json' },
+      });
+      const rows = await response.json();
+      setHasMore(rows.length > size);
+      setItems(rows.slice(0, size));
+    } finally {
+      setLoading(false);
+    }
+  }, []);
+
+  useEffect(() => {
+    if (latest) {
+      loadLatest(page, rowsPerPage);
+    }
+  }, [latest, page, rowsPerPage, loadLatest]);
+
   const onShow = useCatchCallback(async ({ deviceIds, groupIds, from, to }) => {
+    setLatest(false);
+    setPage(0);
     const query = new URLSearchParams({ from, to });
     deviceIds.forEach((deviceId) => query.append('deviceId', deviceId));
     groupIds.forEach((groupId) => query.append('groupId', groupId));
@@ -205,6 +244,12 @@ const ActivityReportPage = () => {
               />
             </ReportFilter>
           </div>
+          {latest && (
+            <Typography variant="body2" color="textSecondary" sx={{ px: 2, pt: 1 }}>
+              Latest activities across your devices. Choose devices and a period, then Show, to
+              search.
+            </Typography>
+          )}
           <Table>
             <TableHead>
               <TableRow>
@@ -217,35 +262,62 @@ const ActivityReportPage = () => {
             </TableHead>
             <TableBody>
               {!loading ? (
-                items.map((item) => (
-                  <TableRow key={`${item.deviceId}-${item.startTime}`}>
-                    <TableCell className={classes.columnAction} padding="none">
-                      <div className={classes.columnActionContainer}>
-                        {selectedItem === item ? (
-                          <IconButton size="small" onClick={() => setSelectedItem(null)}>
-                            <GpsFixedIcon fontSize="small" />
+                (latest ? items : items.slice(page * rowsPerPage, (page + 1) * rowsPerPage)).map(
+                  (item) => (
+                    <TableRow key={`${item.deviceId}-${item.startTime}`}>
+                      <TableCell className={classes.columnAction} padding="none">
+                        <div className={classes.columnActionContainer}>
+                          {selectedItem === item ? (
+                            <IconButton size="small" onClick={() => setSelectedItem(null)}>
+                              <GpsFixedIcon fontSize="small" />
+                            </IconButton>
+                          ) : (
+                            <IconButton size="small" onClick={() => setSelectedItem(item)}>
+                              <LocationSearchingIcon fontSize="small" />
+                            </IconButton>
+                          )}
+                          <IconButton size="small" onClick={() => navigateToReplay(item)}>
+                            <RouteIcon fontSize="small" />
                           </IconButton>
-                        ) : (
-                          <IconButton size="small" onClick={() => setSelectedItem(item)}>
-                            <LocationSearchingIcon fontSize="small" />
-                          </IconButton>
-                        )}
-                        <IconButton size="small" onClick={() => navigateToReplay(item)}>
-                          <RouteIcon fontSize="small" />
-                        </IconButton>
-                      </div>
-                    </TableCell>
-                    <TableCell>{devices[item.deviceId]?.name}</TableCell>
-                    {columns.map((key) => (
-                      <TableCell key={key}>{formatValue(item, key)}</TableCell>
-                    ))}
-                  </TableRow>
-                ))
+                        </div>
+                      </TableCell>
+                      <TableCell>{devices[item.deviceId]?.name}</TableCell>
+                      {columns.map((key) => (
+                        <TableCell key={key}>{formatValue(item, key)}</TableCell>
+                      ))}
+                    </TableRow>
+                  ),
+                )
               ) : (
                 <TableShimmer columns={columns.length + 2} startAction />
               )}
             </TableBody>
           </Table>
+          <TablePagination
+            component="div"
+            count={latest ? (hasMore ? -1 : page * rowsPerPage + items.length) : items.length}
+            page={page}
+            onPageChange={(event, value) => setPage(value)}
+            rowsPerPage={rowsPerPage}
+            onRowsPerPageChange={(event) => {
+              setRowsPerPage(parseInt(event.target.value, 10));
+              setPage(0);
+            }}
+            rowsPerPageOptions={[25, 50, 100, 200]}
+          />
+          {!latest && (
+            <Typography
+              variant="body2"
+              color="primary"
+              sx={{ px: 2, pb: 2, cursor: 'pointer' }}
+              onClick={() => {
+                setPage(0);
+                setLatest(true);
+              }}
+            >
+              Back to latest activities
+            </Typography>
+          )}
         </div>
       </div>
     </PageLayout>
