@@ -12,6 +12,7 @@ import RouteIcon from '@mui/icons-material/Route';
 import EventRepeatIcon from '@mui/icons-material/EventRepeat';
 import NotesIcon from '@mui/icons-material/Notes';
 import VerifiedUserIcon from '@mui/icons-material/VerifiedUser';
+import DirectionsBikeIcon from '@mui/icons-material/DirectionsBike';
 import { useLocation } from 'react-router-dom';
 import { useTranslation } from '../../common/components/LocalizationProvider';
 import { useAdministrator, useRestriction } from '../../common/util/permissions';
@@ -65,6 +66,13 @@ const ReportsMenu = () => {
           link={buildLink('/reports/geofences')}
           icon={<PlaceIcon />}
           selected={location.pathname === '/reports/geofences'}
+        />
+        {/* OURS: activities detected per device role (REPORTING.md, R1). */}
+        <MenuItem
+          title="Activities"
+          link={buildLink('/reports/activities')}
+          icon={<DirectionsBikeIcon />}
+          selected={location.pathname === '/reports/activities'}
         />
         <MenuItem
           title={t('reportTrips')}
