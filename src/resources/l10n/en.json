@@ -523,6 +523,7 @@
     "eventDeviceUnknown": "Status unknown",
     "eventDeviceOffline": "Status offline",
     "eventDeviceInactive": "Device inactive",
+    "eventActivityClosed": "Trip ended",
     "eventQueuedCommandSent": "Queued command sent",
     "eventDeviceMoving": "Device moving",
     "eventDeviceStopped": "Device stopped",
