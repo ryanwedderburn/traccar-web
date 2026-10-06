@@ -65,7 +65,7 @@ const StopReportPage = () => {
     'address',
   ]);
   const [items, setItems] = useState([]);
-  const [pagedItems, pagination] = usePagedItems(items, 'stop');
+  const [pagedItems, pagination, sortCell] = usePagedItems(items, 'stop');
   const [loading, setLoading] = useState(false);
   const [selectedItem, setSelectedItem] = useState(null);
 
@@ -183,10 +183,8 @@ const StopReportPage = () => {
             <TableHead>
               <TableRow>
                 <TableCell className={classes.columnAction} />
-                <TableCell>{t('sharedDevice')}</TableCell>
-                {columns.map((key) => (
-                  <TableCell key={key}>{t(columnsMap.get(key))}</TableCell>
-                ))}
+                {sortCell('deviceId', t('sharedDevice'))}
+                {columns.map((key) => sortCell(key, t(columnsMap.get(key))))}
               </TableRow>
             </TableHead>
             <TableBody>

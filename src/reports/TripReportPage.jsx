@@ -74,7 +74,7 @@ const TripReportPage = () => {
     'averageSpeed',
   ]);
   const [items, setItems] = useState([]);
-  const [pagedItems, pagination] = usePagedItems(items, 'trip');
+  const [pagedItems, pagination, sortCell] = usePagedItems(items, 'trip');
   const [loading, setLoading] = useState(false);
   const [selectedItem, setSelectedItem] = useState(null);
   const [route, setRoute] = useState(null);
@@ -255,10 +255,8 @@ const TripReportPage = () => {
             <TableHead>
               <TableRow>
                 <TableCell className={classes.columnAction} />
-                <TableCell>{t('sharedDevice')}</TableCell>
-                {columns.map((key) => (
-                  <TableCell key={key}>{t(columnsMap.get(key))}</TableCell>
-                ))}
+                {sortCell('deviceId', t('sharedDevice'))}
+                {columns.map((key) => sortCell(key, t(columnsMap.get(key))))}
               </TableRow>
             </TableHead>
             <TableBody>

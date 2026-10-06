@@ -71,7 +71,7 @@ const SummaryReportPage = () => {
   ]);
   const daily = searchParams.get('daily') === 'true';
   const [items, setItems] = useState([]);
-  const [pagedItems, pagination] = usePagedItems(items, 'summary');
+  const [pagedItems, pagination, sortCell] = usePagedItems(items, 'summary');
   const [loading, setLoading] = useState(false);
 
   const onShow = useCatchCallback(
@@ -178,10 +178,8 @@ const SummaryReportPage = () => {
       <Table>
         <TableHead>
           <TableRow>
-            <TableCell>{t('sharedDevice')}</TableCell>
-            {columns.map((key) => (
-              <TableCell key={key}>{t(columnsMap.get(key))}</TableCell>
-            ))}
+            {sortCell('deviceId', t('sharedDevice'))}
+            {columns.map((key) => sortCell(key, t(columnsMap.get(key))))}
           </TableRow>
         </TableHead>
         <TableBody>

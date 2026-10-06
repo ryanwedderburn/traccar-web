@@ -74,7 +74,7 @@ const EventReportPage = () => {
   const eventTypes = useMemo(() => searchParams.getAll('eventType'), [searchParams]);
   const alarmTypes = useMemo(() => searchParams.getAll('alarmType'), [searchParams]);
   const [items, setItems] = useState([]);
-  const [pagedItems, pagination] = usePagedItems(items, 'event');
+  const [pagedItems, pagination, sortCell] = usePagedItems(items, 'event');
   const [positions, setPositions] = useState({});
   const [loading, setLoading] = useState(false);
   const [selectedItem, setSelectedItem] = useState(null);
@@ -301,10 +301,8 @@ const EventReportPage = () => {
             <TableHead>
               <TableRow>
                 <TableCell className={classes.columnAction} />
-                <TableCell>{t('sharedDevice')}</TableCell>
-                {columns.map((key) => (
-                  <TableCell key={key}>{t(columnsMap.get(key))}</TableCell>
-                ))}
+                {sortCell('deviceId', t('sharedDevice'))}
+                {columns.map((key) => sortCell(key, t(columnsMap.get(key))))}
               </TableRow>
             </TableHead>
             <TableBody>

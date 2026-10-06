@@ -42,7 +42,7 @@ const PositionsReportPage = () => {
   const [available, setAvailable] = useState([]);
   const [columns, setColumns] = useState(['fixTime', 'latitude', 'longitude', 'speed', 'address']);
   const [items, setItems] = useState([]);
-  const [pagedItems, pagination] = usePagedItems(items, 'positions');
+  const [pagedItems, pagination, sortCell] = usePagedItems(items, 'positions');
   const geofenceId = searchParams.has('geofenceId')
     ? parseInt(searchParams.get('geofenceId'))
     : null;
@@ -178,9 +178,7 @@ const PositionsReportPage = () => {
             <TableHead>
               <TableRow>
                 <TableCell className={classes.columnAction} />
-                {columns.map((key) => (
-                  <TableCell key={key}>{positionAttributes[key]?.name || key}</TableCell>
-                ))}
+                {columns.map((key) => sortCell(key, positionAttributes[key]?.name || key))}
                 <TableCell className={classes.columnAction} />
               </TableRow>
             </TableHead>

@@ -38,7 +38,7 @@ const StatisticsPage = () => {
     'messagesStored',
   ]);
   const [items, setItems] = useState([]);
-  const [pagedItems, pagination] = usePagedItems(items, 'statistics');
+  const [pagedItems, pagination, sortCell] = usePagedItems(items, 'statistics');
   const [loading, setLoading] = useState(false);
 
   const onShow = useCatchCallback(async ({ from, to }) => {
@@ -61,11 +61,7 @@ const StatisticsPage = () => {
       </div>
       <Table>
         <TableHead>
-          <TableRow>
-            {columns.map((key) => (
-              <TableCell key={key}>{t(columnsMap.get(key))}</TableCell>
-            ))}
-          </TableRow>
+          <TableRow>{columns.map((key) => sortCell(key, t(columnsMap.get(key))))}</TableRow>
         </TableHead>
         <TableBody>
           {!loading ? (

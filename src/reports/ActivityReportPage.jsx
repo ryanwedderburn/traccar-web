@@ -24,6 +24,7 @@ import {
   formatNumericHours,
 } from '../common/util/formatter';
 import ReportFilter from './components/ReportFilter';
+import { useSortedItems } from './components/usePagedItems';
 import { useAttributePreference } from '../common/util/preferences';
 import { useTranslation } from '../common/components/LocalizationProvider';
 import PageLayout from '../common/components/PageLayout';
@@ -91,6 +92,7 @@ const ActivityReportPage = () => {
   const [page, setPage] = useState(0);
   const [rowsPerPage, setRowsPerPage] = usePersistedState('activityRowsPerPage', 50);
   const [hasMore, setHasMore] = useState(false);
+  const [sortedItems, sortCell] = useSortedItems(items, 'activity');
 
   const createMarkers = () => [
     { latitude: selectedItem.startLat, longitude: selectedItem.startLon, image: 'start-success' },
@@ -255,40 +257,39 @@ const ActivityReportPage = () => {
             <TableHead>
               <TableRow>
                 <TableCell className={classes.columnAction} />
-                <TableCell>{t('sharedDevice')}</TableCell>
-                {columns.map((key) => (
-                  <TableCell key={key}>{label(columnsMap.get(key))}</TableCell>
-                ))}
+                {sortCell('deviceId', t('sharedDevice'))}
+                {columns.map((key) => sortCell(key, label(columnsMap.get(key))))}
               </TableRow>
             </TableHead>
             <TableBody>
               {!loading ? (
-                (latest ? items : items.slice(page * rowsPerPage, (page + 1) * rowsPerPage)).map(
-                  (item) => (
-                    <TableRow key={`${item.deviceId}-${item.startTime}`}>
-                      <TableCell className={classes.columnAction} padding="none">
-                        <div className={classes.columnActionContainer}>
-                          {selectedItem === item ? (
-                            <IconButton size="small" onClick={() => setSelectedItem(null)}>
-                              <GpsFixedIcon fontSize="small" />
-                            </IconButton>
-                          ) : (
-                            <IconButton size="small" onClick={() => setSelectedItem(item)}>
-                              <LocationSearchingIcon fontSize="small" />
-                            </IconButton>
-                          )}
-                          <IconButton size="small" onClick={() => navigateToReplay(item)}>
-                            <RouteIcon fontSize="small" />
+                (latest
+                  ? sortedItems
+                  : sortedItems.slice(page * rowsPerPage, (page + 1) * rowsPerPage)
+                ).map((item) => (
+                  <TableRow key={`${item.deviceId}-${item.startTime}`}>
+                    <TableCell className={classes.columnAction} padding="none">
+                      <div className={classes.columnActionContainer}>
+                        {selectedItem === item ? (
+                          <IconButton size="small" onClick={() => setSelectedItem(null)}>
+                            <GpsFixedIcon fontSize="small" />
                           </IconButton>
-                        </div>
-                      </TableCell>
-                      <TableCell>{devices[item.deviceId]?.name}</TableCell>
-                      {columns.map((key) => (
-                        <TableCell key={key}>{formatValue(item, key)}</TableCell>
-                      ))}
-                    </TableRow>
-                  ),
-                )
+                        ) : (
+                          <IconButton size="small" onClick={() => setSelectedItem(item)}>
+                            <LocationSearchingIcon fontSize="small" />
+                          </IconButton>
+                        )}
+                        <IconButton size="small" onClick={() => navigateToReplay(item)}>
+                          <RouteIcon fontSize="small" />
+                        </IconButton>
+                      </div>
+                    </TableCell>
+                    <TableCell>{devices[item.deviceId]?.name}</TableCell>
+                    {columns.map((key) => (
+                      <TableCell key={key}>{formatValue(item, key)}</TableCell>
+                    ))}
+                  </TableRow>
+                ))
               ) : (
                 <TableShimmer columns={columns.length + 2} startAction />
               )}
