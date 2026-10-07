@@ -78,6 +78,23 @@ const TYPES = { competitor: 'Ride', rider: 'Ride', vehicle: 'Drive', person: 'On
 const VEHICLE_CATEGORIES = ['car', 'van', 'truck', 'bus', 'camper', 'tractor'];
 const classifiable = (item) => item.role === 'vehicle' && !item.open;
 
+// Vehicle data charted on a selected drive (REPORTING.md, R6): whichever of these the tracker or
+// OBD dongle reports. Units as Traccar stores them.
+const VEHICLE_SERIES = [
+  ['rpm', 'RPM', ''],
+  ['obdSpeed', 'OBD speed', 'km/h'],
+  ['engineLoad', 'Engine load', '%'],
+  ['throttle', 'Throttle', '%'],
+  ['coolantTemp', 'Coolant', '°C'],
+  ['engineTemp', 'Engine temp', '°C'],
+  ['fuelLevel', 'Fuel level', '%'],
+  ['fuel', 'Fuel', 'L'],
+  ['fuelConsumption', 'Fuel use', 'L/h'],
+  ['power', 'Supply voltage', 'V'],
+  ['battery', 'Tracker battery', 'V'],
+];
+const SERIES_COLOURS = ['#2a78d6', '#eb6834', '#1baf7a', '#eda100', '#e87ba4'];
+
 // SA tax year: 1 March to end February, named by the year it ends in.
 const currentTaxYear = () => {
   const now = new Date();
@@ -236,6 +253,28 @@ const ActivityReportPage = () => {
     },
     [selectedItem],
   );
+
+  const [vehicleKeys, setVehicleKeys] = useState([]);
+  const availableSeries =
+    selectedItem?.role === 'vehicle' && route
+      ? VEHICLE_SERIES.filter(([key]) =>
+          route.some((position) => typeof position.attributes?.[key] === 'number'),
+        )
+      : [];
+  const shownSeries = availableSeries.filter(([key]) => vehicleKeys.includes(key));
+  const vehicleData = () => {
+    const start = new Date(selectedItem.startTime).getTime();
+    return route.map((position) => {
+      const point = { minute: (new Date(position.fixTime).getTime() - start) / 60000 };
+      shownSeries.forEach(([key]) => {
+        const value = position.attributes?.[key];
+        if (typeof value === 'number') {
+          point[key] = Math.round(value * 10) / 10;
+        }
+      });
+      return point;
+    });
+  };
 
   const chartData = () => {
     const start = new Date(selectedItem.startTime).getTime();
@@ -439,6 +478,76 @@ const ActivityReportPage = () => {
                   </LineChart>
                 </ResponsiveContainer>
               </Box>
+            </Box>
+          )}
+          {availableSeries.length > 0 && (
+            <Box sx={{ px: 2, pt: 1 }}>
+              <Typography variant="subtitle2">Vehicle data on this drive</Typography>
+              <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 0.5, py: 0.5 }}>
+                {availableSeries.map(([key, name]) => (
+                  <Button
+                    key={key}
+                    size="small"
+                    variant={vehicleKeys.includes(key) ? 'contained' : 'outlined'}
+                    onClick={() =>
+                      setVehicleKeys((current) =>
+                        current.includes(key)
+                          ? current.filter((other) => other !== key)
+                          : [...current, key].slice(-SERIES_COLOURS.length),
+                      )
+                    }
+                  >
+                    {name}
+                  </Button>
+                ))}
+              </Box>
+              {shownSeries.length > 0 && (
+                <Box sx={{ width: '100%', height: 220 }}>
+                  <ResponsiveContainer>
+                    <LineChart
+                      data={vehicleData()}
+                      margin={{ top: 8, right: 8, bottom: 8, left: -8 }}
+                    >
+                      <XAxis
+                        dataKey="minute"
+                        type="number"
+                        domain={['dataMin', 'dataMax']}
+                        tickFormatter={(v) => `${Math.round(v)}`}
+                        unit=" min"
+                      />
+                      {shownSeries.map(([key], index) => (
+                        <YAxis
+                          key={key}
+                          yAxisId={key}
+                          hide={index > 1}
+                          orientation={index === 1 ? 'right' : 'left'}
+                        />
+                      ))}
+                      <Tooltip
+                        formatter={(value, name, entry) => {
+                          const unit = VEHICLE_SERIES.find(([key]) => key === entry.dataKey)[2];
+                          return [`${value}${unit ? ` ${unit}` : ''}`, name];
+                        }}
+                        labelFormatter={(v) => `${v.toFixed(1)} min`}
+                      />
+                      <Legend />
+                      {shownSeries.map(([key, name], index) => (
+                        <Line
+                          key={key}
+                          yAxisId={key}
+                          name={name}
+                          dataKey={key}
+                          dot={false}
+                          connectNulls
+                          strokeWidth={1.5}
+                          stroke={SERIES_COLOURS[index]}
+                          isAnimationActive={false}
+                        />
+                      ))}
+                    </LineChart>
+                  </ResponsiveContainer>
+                </Box>
+              )}
             </Box>
           )}
           {unanswered.length > 0 && (
