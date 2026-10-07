@@ -5,7 +5,15 @@ import { useNavigate } from 'react-router-dom';
 import { useSelector } from 'react-redux';
 import { useTheme } from '@mui/material/styles';
 import {
+  Button,
+  Dialog,
+  DialogActions,
+  DialogContent,
+  DialogTitle,
   IconButton,
+  MenuItem,
+  Select,
+  TextField,
   Table,
   TableBody,
   TableCell,
@@ -17,6 +25,7 @@ import {
 import GpsFixedIcon from '@mui/icons-material/GpsFixed';
 import LocationSearchingIcon from '@mui/icons-material/LocationSearching';
 import RouteIcon from '@mui/icons-material/Route';
+import { saveAs } from 'file-saver';
 import {
   formatDistance,
   formatSpeed,
@@ -62,6 +71,22 @@ const columnsMap = new Map(columnsArray);
 
 const TYPES = { competitor: 'Ride', rider: 'Ride', vehicle: 'Drive', person: 'On foot' };
 
+// Trip classification for the travel logbook (REPORTING.md, R9): vehicle trips only, once finished.
+const VEHICLE_CATEGORIES = ['car', 'van', 'truck', 'bus', 'camper', 'tractor'];
+const classifiable = (item) => item.role === 'vehicle' && !item.open;
+
+// SA tax year: 1 March to end February, named by the year it ends in.
+const currentTaxYear = () => {
+  const now = new Date();
+  return now.getMonth() >= 2 ? now.getFullYear() + 1 : now.getFullYear();
+};
+
+const fileNameOf = (response, fallback) => {
+  const header = response.headers.get('Content-Disposition') || '';
+  const match = header.match(/filename="([^"]+)"/);
+  return match ? match[1] : fallback;
+};
+
 const ActivityReportPage = () => {
   const navigate = useNavigate();
   const { classes } = useReportStyles();
@@ -93,6 +118,49 @@ const ActivityReportPage = () => {
   const [rowsPerPage, setRowsPerPage] = usePersistedState('activityRowsPerPage', 50);
   const [hasMore, setHasMore] = useState(false);
   const [sortedItems, sortCell] = useSortedItems(items, 'activity');
+  const showClass = items.some((item) => item.role === 'vehicle');
+  const [logbookOpen, setLogbookOpen] = useState(false);
+  const [logbookDevice, setLogbookDevice] = useState('');
+  const [logbookYear, setLogbookYear] = useState(currentTaxYear());
+  const [logbookKm, setLogbookKm] = useState('');
+  const vehicles = Object.values(devices).filter((device) =>
+    VEHICLE_CATEGORIES.includes(device.category),
+  );
+
+  const saveClass = useCatch(async (item, tripClass, purpose) => {
+    await fetchOrThrow('/api/activities/class', {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        deviceId: item.deviceId,
+        startTime: item.startTime,
+        endTime: item.endTime,
+        tripClass: tripClass || null,
+        purpose: tripClass ? purpose || null : null,
+      }),
+    });
+    setItems((current) =>
+      current.map((other) =>
+        other === item
+          ? {
+              ...other,
+              tripClass: tripClass || undefined,
+              purpose: tripClass ? purpose : undefined,
+            }
+          : other,
+      ),
+    );
+  });
+
+  const downloadLogbook = useCatch(async () => {
+    const query = new URLSearchParams({ deviceId: logbookDevice, year: logbookYear });
+    if (logbookKm !== '') {
+      query.append('openingKm', logbookKm);
+    }
+    const response = await fetchOrThrow(`/api/activities/logbook?${query.toString()}`);
+    saveAs(await response.blob(), fileNameOf(response, `logbook-${logbookYear}.xlsx`));
+    setLogbookOpen(false);
+  });
 
   const createMarkers = () => [
     { latitude: selectedItem.startLat, longitude: selectedItem.startLon, image: 'start-success' },
@@ -253,12 +321,65 @@ const ActivityReportPage = () => {
               search.
             </Typography>
           )}
+          {vehicles.length > 0 && (
+            <Button size="small" sx={{ mx: 1, mt: 1 }} onClick={() => setLogbookOpen(true)}>
+              Travel logbook
+            </Button>
+          )}
+          <Dialog open={logbookOpen} onClose={() => setLogbookOpen(false)} maxWidth="xs" fullWidth>
+            <DialogTitle>Travel logbook</DialogTitle>
+            <DialogContent sx={{ display: 'flex', flexDirection: 'column', gap: 2, pt: 1 }}>
+              <TextField
+                select
+                label={t('sharedDevice')}
+                value={logbookDevice}
+                onChange={(event) => setLogbookDevice(event.target.value)}
+                sx={{ mt: 1 }}
+              >
+                {vehicles.map((device) => (
+                  <MenuItem key={device.id} value={device.id}>
+                    {device.name}
+                  </MenuItem>
+                ))}
+              </TextField>
+              <TextField
+                select
+                label="Tax year"
+                value={logbookYear}
+                onChange={(event) => setLogbookYear(event.target.value)}
+              >
+                {[0, 1, 2].map((back) => {
+                  const year = currentTaxYear() - back;
+                  return (
+                    <MenuItem key={year} value={year}>
+                      {`${year} (1 Mar ${year - 1} to Feb ${year})`}
+                    </MenuItem>
+                  );
+                })}
+              </TextField>
+              <TextField
+                type="number"
+                label="Odometer on 1 March (km, optional)"
+                helperText="Your dashboard reading. Without it the vehicle's or tracker's own odometer is used where reported."
+                value={logbookKm}
+                onChange={(event) => setLogbookKm(event.target.value)}
+              />
+            </DialogContent>
+            <DialogActions>
+              <Button onClick={() => setLogbookOpen(false)}>{t('sharedCancel')}</Button>
+              <Button disabled={!logbookDevice} onClick={downloadLogbook}>
+                Download
+              </Button>
+            </DialogActions>
+          </Dialog>
           <Table>
             <TableHead>
               <TableRow>
                 <TableCell className={classes.columnAction} />
                 {sortCell('deviceId', t('sharedDevice'))}
                 {columns.map((key) => sortCell(key, label(columnsMap.get(key))))}
+                {showClass && sortCell('tripClass', 'Business / personal')}
+                {showClass && sortCell('purpose', 'Reason / client')}
               </TableRow>
             </TableHead>
             <TableBody>
@@ -288,10 +409,48 @@ const ActivityReportPage = () => {
                     {columns.map((key) => (
                       <TableCell key={key}>{formatValue(item, key)}</TableCell>
                     ))}
+                    {showClass && (
+                      <TableCell padding="none">
+                        {classifiable(item) && (
+                          <Select
+                            size="small"
+                            variant="standard"
+                            displayEmpty
+                            value={item.tripClass || ''}
+                            onChange={(event) => saveClass(item, event.target.value, item.purpose)}
+                          >
+                            <MenuItem value="">
+                              <em>Not set</em>
+                            </MenuItem>
+                            <MenuItem value="business">Business</MenuItem>
+                            <MenuItem value="personal">Personal</MenuItem>
+                          </Select>
+                        )}
+                      </TableCell>
+                    )}
+                    {showClass && (
+                      <TableCell padding="none">
+                        {classifiable(item) && (
+                          <TextField
+                            key={`${item.startTime}-${item.tripClass || ''}`}
+                            size="small"
+                            variant="standard"
+                            disabled={!item.tripClass}
+                            placeholder={item.tripClass ? 'Reason or client' : ''}
+                            defaultValue={item.purpose || ''}
+                            onBlur={(event) => {
+                              if (event.target.value !== (item.purpose || '')) {
+                                saveClass(item, item.tripClass, event.target.value);
+                              }
+                            }}
+                          />
+                        )}
+                      </TableCell>
+                    )}
                   </TableRow>
                 ))
               ) : (
-                <TableShimmer columns={columns.length + 2} startAction />
+                <TableShimmer columns={columns.length + (showClass ? 4 : 2)} startAction />
               )}
             </TableBody>
           </Table>
