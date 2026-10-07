@@ -5,6 +5,7 @@ import { useNavigate } from 'react-router-dom';
 import { useSelector } from 'react-redux';
 import { useTheme } from '@mui/material/styles';
 import {
+  Box,
   Button,
   Dialog,
   DialogActions,
@@ -26,6 +27,8 @@ import GpsFixedIcon from '@mui/icons-material/GpsFixed';
 import LocationSearchingIcon from '@mui/icons-material/LocationSearching';
 import RouteIcon from '@mui/icons-material/Route';
 import { saveAs } from 'file-saver';
+import { LineChart, Line, XAxis, YAxis, Tooltip, Legend, ResponsiveContainer } from 'recharts';
+import { speedFromKnots, speedUnitString } from '../common/util/converter';
 import {
   formatDistance,
   formatSpeed,
@@ -111,6 +114,9 @@ const ActivityReportPage = () => {
   const [loading, setLoading] = useState(false);
   const [selectedItem, setSelectedItem] = useState(null);
   const [route, setRoute] = useState(null);
+  // The signed-in user's own heart rate during the selected activity (REPORTING.md, R4). Owner
+  // only: the server returns nothing for anyone else's data and refuses impersonated sessions.
+  const [heartRate, setHeartRate] = useState(null);
   // Latest mode: on arrival the page lists the newest stored activities, a page at a time.
   // Pressing Show switches to the chosen devices and period; Latest returns to the feed.
   const [latest, setLatest] = useState(true);
@@ -152,6 +158,30 @@ const ActivityReportPage = () => {
     );
   });
 
+  // Bulk: the trips on this page that have no answer yet, all at once (e.g. a day of site visits).
+  const visibleItems = latest
+    ? sortedItems
+    : sortedItems.slice(page * rowsPerPage, (page + 1) * rowsPerPage);
+  const unanswered = visibleItems.filter((item) => classifiable(item) && !item.tripClass);
+  const classifyAll = useCatch(async (tripClass) => {
+    await Promise.all(
+      unanswered.map((item) =>
+        fetchOrThrow('/api/activities/class', {
+          method: 'PUT',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            deviceId: item.deviceId,
+            startTime: item.startTime,
+            endTime: item.endTime,
+            tripClass,
+          }),
+        }),
+      ),
+    );
+    const done = new Set(unanswered);
+    setItems((current) => current.map((item) => (done.has(item) ? { ...item, tripClass } : item)));
+  });
+
   const downloadLogbook = useCatch(async () => {
     const query = new URLSearchParams({ deviceId: logbookDevice, year: logbookYear });
     if (logbookKm !== '') {
@@ -186,6 +216,38 @@ const ActivityReportPage = () => {
     },
     [selectedItem],
   );
+
+  useAsyncTask(
+    async ({ signal }) => {
+      setHeartRate(null);
+      if (selectedItem && !selectedItem.open) {
+        const query = new URLSearchParams({
+          deviceId: selectedItem.deviceId,
+          from: selectedItem.startTime,
+          to: selectedItem.endTime,
+        });
+        // Plain fetch: no session, or an impersonated one, is not an error worth showing.
+        const response = await fetch(`/api/athlete/overlay?${query.toString()}`, { signal });
+        if (response.ok) {
+          const result = await response.json();
+          setHeartRate(result.samples ? result : null);
+        }
+      }
+    },
+    [selectedItem],
+  );
+
+  const chartData = () => {
+    const start = new Date(selectedItem.startTime).getTime();
+    const points = heartRate.samples.map(([time, hr]) => ({ minute: (time - start) / 60000, hr }));
+    (route || []).forEach((position) => {
+      points.push({
+        minute: (new Date(position.fixTime).getTime() - start) / 60000,
+        speed: speedFromKnots(position.speed, speedUnit),
+      });
+    });
+    return points.sort((a, b) => a.minute - b.minute);
+  };
 
   const loadLatest = useCatchCallback(async (pageIndex, size) => {
     const query = new URLSearchParams({ limit: size + 1, offset: pageIndex * size });
@@ -321,6 +383,75 @@ const ActivityReportPage = () => {
               search.
             </Typography>
           )}
+          {selectedItem && heartRate && (
+            <Box sx={{ px: 2, pt: 1 }}>
+              <Typography variant="subtitle2">
+                {`Your heart rate on this activity: average ${heartRate.avgHr} bpm, maximum ${heartRate.maxHr} bpm`}
+              </Typography>
+              <Typography variant="caption" color="textSecondary">
+                {`Source: ${heartRate.source}. Your own recorded session, matched by time. Only you can see this.`}
+              </Typography>
+              <Box sx={{ width: '100%', height: 220 }}>
+                <ResponsiveContainer>
+                  <LineChart data={chartData()} margin={{ top: 8, right: 8, bottom: 8, left: -8 }}>
+                    <XAxis
+                      dataKey="minute"
+                      type="number"
+                      domain={['dataMin', 'dataMax']}
+                      tickFormatter={(v) => `${Math.round(v)}`}
+                      unit=" min"
+                    />
+                    <YAxis
+                      yAxisId="hr"
+                      domain={['dataMin - 5', 'dataMax + 5']}
+                      allowDecimals={false}
+                    />
+                    <YAxis yAxisId="speed" orientation="right" allowDecimals={false} />
+                    <Tooltip
+                      formatter={(value, name) =>
+                        name === 'Heart rate'
+                          ? [`${value} bpm`, name]
+                          : [`${value} ${speedUnitString(speedUnit, t)}`, name]
+                      }
+                      labelFormatter={(v) => `${v.toFixed(1)} min`}
+                    />
+                    <Legend />
+                    <Line
+                      yAxisId="hr"
+                      name="Heart rate"
+                      dataKey="hr"
+                      dot={false}
+                      connectNulls
+                      strokeWidth={1.5}
+                      stroke="#e53935"
+                      isAnimationActive={false}
+                    />
+                    <Line
+                      yAxisId="speed"
+                      name="Speed"
+                      dataKey="speed"
+                      dot={false}
+                      connectNulls
+                      strokeWidth={1}
+                      stroke="#2a78d6"
+                      isAnimationActive={false}
+                    />
+                  </LineChart>
+                </ResponsiveContainer>
+              </Box>
+            </Box>
+          )}
+          {unanswered.length > 0 && (
+            <Typography variant="body2" sx={{ px: 2, pt: 1 }}>
+              {`${unanswered.length} trip${unanswered.length > 1 ? 's' : ''} on this page not yet marked. Mark them all: `}
+              <Button size="small" onClick={() => classifyAll('business')}>
+                Business
+              </Button>
+              <Button size="small" onClick={() => classifyAll('personal')}>
+                Personal
+              </Button>
+            </Typography>
+          )}
           {vehicles.length > 0 && (
             <Button size="small" sx={{ mx: 1, mt: 1 }} onClick={() => setLogbookOpen(true)}>
               Travel logbook
@@ -384,10 +515,7 @@ const ActivityReportPage = () => {
             </TableHead>
             <TableBody>
               {!loading ? (
-                (latest
-                  ? sortedItems
-                  : sortedItems.slice(page * rowsPerPage, (page + 1) * rowsPerPage)
-                ).map((item) => (
+                visibleItems.map((item) => (
                   <TableRow key={`${item.deviceId}-${item.startTime}`}>
                     <TableCell className={classes.columnAction} padding="none">
                       <div className={classes.columnActionContainer}>
