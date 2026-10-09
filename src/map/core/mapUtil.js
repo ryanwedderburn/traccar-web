@@ -37,13 +37,16 @@ export const loadImage = (url) =>
   });
 
 /**
- * OURS - a brand marker: the logo in its own colours on a white badge, framed in the status colour.
- * Wide rather than round, so a wordmark (Sherco, Rieju) stays readable at map size.
+ * OURS - a brand marker: the logo in its own colours on a white badge with a soft shadow, like the round
+ * markers, and the status as a small dot on the corner rather than a frame (Ryan, 9 Oct: the red borders
+ * were "a bit rough"). Wide rather than round, so a wordmark (Sherco, Rieju) stays readable at map size.
  */
 export const prepareBrandIcon = (logo, color) => {
-  const width = 72;
-  const height = 34;
-  const border = 3;
+  const margin = 4;
+  const badgeWidth = 68;
+  const badgeHeight = 30;
+  const width = badgeWidth + 2 * margin;
+  const height = badgeHeight + 2 * margin;
   const pad = 4;
   const ratio = devicePixelRatio;
   const canvas = document.createElement('canvas');
@@ -53,19 +56,19 @@ export const prepareBrandIcon = (logo, color) => {
   canvas.style.height = `${height}px`;
   const context = canvas.getContext('2d');
   context.scale(ratio, ratio);
-  const radius = 8;
-  const frame = (inset) => {
-    context.beginPath();
-    context.roundRect(inset, inset, width - 2 * inset, height - 2 * inset, radius - inset);
-  };
-  frame(0);
-  context.fillStyle = color;
-  context.fill();
-  frame(border);
+
+  context.save();
+  context.shadowColor = 'rgba(0, 0, 0, 0.35)';
+  context.shadowBlur = 3;
+  context.shadowOffsetY = 0.5;
+  context.beginPath();
+  context.roundRect(margin, margin, badgeWidth, badgeHeight, 7);
   context.fillStyle = 'white';
   context.fill();
-  const boxWidth = width - 2 * (border + pad);
-  const boxHeight = height - 2 * (border + pad);
+  context.restore();
+
+  const boxWidth = badgeWidth - 2 * pad;
+  const boxHeight = badgeHeight - 2 * pad;
   const scale = Math.min(boxWidth / logo.width, boxHeight / logo.height);
   const drawWidth = logo.width * scale;
   const drawHeight = logo.height * scale;
@@ -76,6 +79,18 @@ export const prepareBrandIcon = (logo, color) => {
     drawWidth,
     drawHeight,
   );
+
+  const dotX = margin + badgeWidth - 2;
+  const dotY = margin + 2;
+  context.beginPath();
+  context.arc(dotX, dotY, 4.5, 0, 2 * Math.PI);
+  context.fillStyle = 'white';
+  context.fill();
+  context.beginPath();
+  context.arc(dotX, dotY, 3.2, 0, 2 * Math.PI);
+  context.fillStyle = color;
+  context.fill();
+
   return context.getImageData(0, 0, canvas.width, canvas.height);
 };
 
