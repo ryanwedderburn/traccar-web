@@ -31,7 +31,7 @@ import {
   getStatusColor,
 } from '../common/util/formatter';
 import { useTranslation } from '../common/components/LocalizationProvider';
-import { mapIconKey, mapIcons } from '../map/core/preloadImages';
+import { brandIcons, brandKey, mapIconKey, mapIcons } from '../map/core/preloadImages';
 import { useAdministrator } from '../common/util/permissions';
 import EngineIcon from '../resources/images/data/engine.svg?react';
 import { useAttributePreference } from '../common/util/preferences';
@@ -50,6 +50,11 @@ const useStyles = makeStyles()((theme) => ({
     width: '25px',
     height: '25px',
     filter: 'brightness(0) invert(1)',
+  },
+  brand: {
+    maxWidth: '34px',
+    maxHeight: '30px',
+    objectFit: 'contain',
   },
   batteryText: {
     fontSize: '0.75rem',
@@ -203,9 +208,22 @@ const DeviceRow = ({ devices, competitors, index, style }) => {
         className={selectedDeviceId === item.id ? classes.selected : null}
       >
         <ListItemAvatar>
-          <Avatar>
-            <img className={classes.icon} src={mapIcons[mapIconKey(item.category)]} alt="" />
-          </Avatar>
+          {brandKey(item) ? (
+            <Avatar
+              variant="rounded"
+              sx={{ bgcolor: 'white', border: '1px solid', borderColor: 'divider' }}
+            >
+              <img
+                className={classes.brand}
+                src={brandIcons[brandKey(item)]}
+                alt={brandKey(item)}
+              />
+            </Avatar>
+          ) : (
+            <Avatar>
+              <img className={classes.icon} src={mapIcons[mapIconKey(item.category)]} alt="" />
+            </Avatar>
+          )}
         </ListItemAvatar>
         <ListItemText
           primary={primaryValue}

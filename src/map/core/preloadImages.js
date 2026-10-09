@@ -1,6 +1,6 @@
 import { grey } from '@mui/material/colors';
 import { createTheme } from '@mui/material';
-import { loadImage, prepareIcon } from './mapUtil';
+import { loadImage, prepareBrandIcon, prepareIcon } from './mapUtil';
 
 import directionSvg from '../../resources/images/direction.svg';
 import backgroundSvg from '../../resources/images/background.svg';
@@ -64,6 +64,41 @@ export const mapIconKey = (category) => {
   }
 };
 
+/*
+ * OURS - rider bike brands (HEWC Sea to Sky 2026, Ryan: "make the rider's bike brand as the icon").
+ * Official logos from the manufacturers' sites, trimmed into public/brands/ (originals and URLs in
+ * public/brands/src/SOURCES.md). A device's `brand` attribute picks one; anything unknown keeps the
+ * category icon.
+ */
+export const brandIcons = {
+  beta: '/brands/beta.png',
+  gasgas: '/brands/gasgas.png',
+  husqvarna: '/brands/husqvarna.png',
+  jarve: '/brands/jarve.png',
+  ktm: '/brands/ktm.png',
+  rieju: '/brands/rieju.png',
+  sherco: '/brands/sherco.png',
+};
+
+const brandAliases = { hqv: 'husqvarna', husky: 'husqvarna', jarv: 'jarve', gas: 'gasgas' };
+
+/** The brand key for a device, or null. Entry lists spell it SHERCO, GasGas, HQV, Jarv-E... */
+export const brandKey = (device) => {
+  const raw = device?.attributes?.brand;
+  if (!raw) return null;
+  const key = String(raw)
+    .toLowerCase()
+    .replace(/[^a-z]/g, '');
+  const resolved = brandAliases[key] || key;
+  return brandIcons.hasOwnProperty(resolved) ? resolved : null;
+};
+
+/** The map image prefix: `brand-<key>` for a known brand, else the category icon. */
+export const deviceIconKey = (device) => {
+  const brand = brandKey(device);
+  return brand ? `brand-${brand}` : mapIconKey(device?.category);
+};
+
 export const mapImages = {};
 
 const theme = createTheme({
@@ -91,6 +126,15 @@ export default async () => {
         );
       });
       await Promise.all(results);
+    }),
+  );
+  await Promise.all(
+    Object.keys(brandIcons).map(async (brand) => {
+      const logo = await loadImage(brandIcons[brand]);
+      if (!logo.width) return;
+      ['info', 'success', 'error', 'neutral'].forEach((color) => {
+        mapImages[`brand-${brand}-${color}`] = prepareBrandIcon(logo, theme.palette[color].main);
+      });
     }),
   );
 };

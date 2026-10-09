@@ -31,8 +31,53 @@ export const loadImage = (url) =>
   new Promise((imageLoaded) => {
     const image = new Image();
     image.onload = () => imageLoaded(image);
+    /* A missing brand logo must not stall preloading the map: resolve with an empty image. */
+    image.onerror = () => imageLoaded(image);
     image.src = url;
   });
+
+/**
+ * OURS - a brand marker: the logo in its own colours on a white badge, framed in the status colour.
+ * Wide rather than round, so a wordmark (Sherco, Rieju) stays readable at map size.
+ */
+export const prepareBrandIcon = (logo, color) => {
+  const width = 72;
+  const height = 34;
+  const border = 3;
+  const pad = 4;
+  const ratio = devicePixelRatio;
+  const canvas = document.createElement('canvas');
+  canvas.width = width * ratio;
+  canvas.height = height * ratio;
+  canvas.style.width = `${width}px`;
+  canvas.style.height = `${height}px`;
+  const context = canvas.getContext('2d');
+  context.scale(ratio, ratio);
+  const radius = 8;
+  const frame = (inset) => {
+    context.beginPath();
+    context.roundRect(inset, inset, width - 2 * inset, height - 2 * inset, radius - inset);
+  };
+  frame(0);
+  context.fillStyle = color;
+  context.fill();
+  frame(border);
+  context.fillStyle = 'white';
+  context.fill();
+  const boxWidth = width - 2 * (border + pad);
+  const boxHeight = height - 2 * (border + pad);
+  const scale = Math.min(boxWidth / logo.width, boxHeight / logo.height);
+  const drawWidth = logo.width * scale;
+  const drawHeight = logo.height * scale;
+  context.drawImage(
+    logo,
+    (width - drawWidth) / 2,
+    (height - drawHeight) / 2,
+    drawWidth,
+    drawHeight,
+  );
+  return context.getImageData(0, 0, canvas.width, canvas.height);
+};
 
 const canvasTintImage = (image, color) => {
   const canvas = document.createElement('canvas');
