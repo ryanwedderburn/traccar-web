@@ -457,7 +457,8 @@ const LoginPage = () => {
         )}
         {openIdEnabled && (
           <Button onClick={() => handleOpenIdLogin()} variant="contained" color="secondary">
-            {t('loginOpenId')}
+            {/* WLAB: Google is the only OpenID provider configured, so name it. */}
+            Sign in with Google
           </Button>
         )}
         {!openIdForced && (
