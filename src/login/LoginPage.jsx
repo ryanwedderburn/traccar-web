@@ -405,9 +405,10 @@ const LoginPage = () => {
               onChange={(e) => setEmail(e.target.value)}
               /* A failure always wins the line. An example only shows while
                  the field is empty - it is there to start someone off, not to
-                 sit under what they have already typed. */
+                 sit under what they have already typed. No line is reserved when
+                 there is nothing to say: an empty one read as a spacing fault. */
               helperText={(failed && (failure || 'Invalid username or password'))
-                || (!email && identifierHint) || ' '}
+                || (!email && identifierHint) || undefined}
             />
             <TextField
               required
