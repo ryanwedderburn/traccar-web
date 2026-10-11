@@ -13,6 +13,7 @@ import EventRepeatIcon from '@mui/icons-material/EventRepeat';
 import NotesIcon from '@mui/icons-material/Notes';
 import VerifiedUserIcon from '@mui/icons-material/VerifiedUser';
 import DirectionsBikeIcon from '@mui/icons-material/DirectionsBike';
+import FolderSharedIcon from '@mui/icons-material/FolderShared';
 import { useLocation } from 'react-router-dom';
 import { useTranslation } from '../../common/components/LocalizationProvider';
 import { useAdministrator, useRestriction } from '../../common/util/permissions';
@@ -49,6 +50,14 @@ const ReportsMenu = () => {
   return (
     <>
       <List>
+        {/* OURS: files WLAB delivered to this account (LibraryResource). First, because it is
+            the one a customer is sent here for. */}
+        <MenuItem
+          title="My reports"
+          link="/reports/library"
+          icon={<FolderSharedIcon />}
+          selected={location.pathname === '/reports/library'}
+        />
         <MenuItem
           title={t('reportCombined')}
           link={buildLink('/reports/combined')}
