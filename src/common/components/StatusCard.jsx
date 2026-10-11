@@ -38,6 +38,7 @@ import { useAttributePreference } from '../util/preferences';
 import useKiosk from '../util/useKiosk';
 import useEquipmentUi from '../util/useEquipmentUi';
 import EquipmentGauges from './EquipmentGauges';
+import TimingRows from './TimingRows';
 import fetchOrThrow from '../util/fetchOrThrow';
 import { AGREE, APART, STALE } from '../util/competitorPairing';
 
@@ -347,8 +348,8 @@ const StatusCard = ({
               {!position && kiosk && (
                 <CardContent className={classes.content}>
                   <Typography variant="body2">
-                    This rider is outside the race area. Riders appear on the
-                    map once they are on course.
+                    This rider is outside the race area. Riders appear on the map once they are on
+                    course.
                   </Typography>
                 </CardContent>
               )}
@@ -359,6 +360,7 @@ const StatusCard = ({
                     <TableBody>
                       <CompetitorRows competitor={competitor} devices={devices} />
                       <ProgressRows position={position} />
+                      <TimingRows deviceId={deviceId} Row={StatusRow} />
                       {positionItems
                         .split(',')
                         .filter(

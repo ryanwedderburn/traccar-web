@@ -247,8 +247,9 @@ const LoginPage = () => {
    * when it cannot sign anybody in, so this is the one surface that has to say
    * it, and the one surface to change back afterwards.
    */
-  const announcement = useSelector((state) => state.session.server.attributes?.announcement
-    || state.session.server.announcement);
+  const announcement = useSelector(
+    (state) => state.session.server.attributes?.announcement || state.session.server.announcement,
+  );
 
   const handlePasswordLogin = async (event) => {
     event.preventDefault();
@@ -407,8 +408,11 @@ const LoginPage = () => {
                  the field is empty - it is there to start someone off, not to
                  sit under what they have already typed. No line is reserved when
                  there is nothing to say: an empty one read as a spacing fault. */
-              helperText={(failed && (failure || 'Invalid username or password'))
-                || (!email && identifierHint) || undefined}
+              helperText={
+                (failed && (failure || 'Invalid username or password')) ||
+                (!email && identifierHint) ||
+                undefined
+              }
             />
             <TextField
               required
@@ -472,7 +476,11 @@ const LoginPage = () => {
               <Typography sx={{ px: 2, py: 1 }}>Sign in with Google</Typography>
             ) : (
               <img
-                src={theme.palette.mode === 'dark' ? '/google-signin-dark.svg' : '/google-signin-light.svg'}
+                src={
+                  theme.palette.mode === 'dark'
+                    ? '/google-signin-dark.svg'
+                    : '/google-signin-light.svg'
+                }
                 alt="Sign in with Google"
                 width={180}
                 height={40}
