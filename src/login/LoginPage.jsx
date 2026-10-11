@@ -5,6 +5,7 @@ import {
   MenuItem,
   FormControl,
   Button,
+  ButtonBase,
   TextField,
   Link,
   Snackbar,
@@ -124,6 +125,7 @@ const LoginPage = () => {
   const dispatch = useDispatch();
   const navigate = useNavigate();
   const theme = useTheme();
+  const [googleButtonFailed, setGoogleButtonFailed] = useState(false);
   const t = useTranslation();
 
   const { languages, language, setLocalLanguage } = useLocalization();
@@ -456,39 +458,27 @@ const LoginPage = () => {
           </>
         )}
         {openIdEnabled && (
-          /* WLAB: Google is the only OpenID provider configured, so the button follows Google's
-             sign-in button guidelines (neutral fill, grey outline, G mark, "Sign in with Google").
-             The G mark is Google's official asset, placed by hand at deploy/override/google-g.svg
-             from Google's sign-in branding download; without it the button shows text only. */
-          <Button
+          /* WLAB: Google is the only OpenID provider configured, so this is Google's own
+             "Sign in with Google" button, used unaltered from Google's sign-in branding download
+             (deploy/override/google-signin-light.svg and -dark.svg, square, with text). If the
+             image cannot load, the text alone still works as the button. */
+          <ButtonBase
             onClick={() => handleOpenIdLogin()}
-            variant="outlined"
-            sx={{
-              textTransform: 'none',
-              fontFamily: 'Roboto, Arial, sans-serif',
-              fontWeight: 500,
-              fontSize: 14,
-              height: 40,
-              borderRadius: '4px',
-              gap: '10px',
-              color: theme.palette.mode === 'dark' ? '#E3E3E3' : '#1F1F1F',
-              backgroundColor: theme.palette.mode === 'dark' ? '#131314' : '#FFFFFF',
-              borderColor: theme.palette.mode === 'dark' ? '#8E918F' : '#747775',
-              '&:hover': {
-                backgroundColor: theme.palette.mode === 'dark' ? '#1E1F20' : '#F8F9FA',
-                borderColor: theme.palette.mode === 'dark' ? '#8E918F' : '#747775',
-              },
-            }}
+            aria-label="Sign in with Google"
+            sx={{ alignSelf: 'center', borderRadius: '4px' }}
           >
-            <img
-              src="/google-g.svg"
-              alt=""
-              width={20}
-              height={20}
-              onError={(event) => { event.currentTarget.style.display = 'none'; }}
-            />
-            Sign in with Google
-          </Button>
+            {googleButtonFailed ? (
+              <Typography sx={{ px: 2, py: 1 }}>Sign in with Google</Typography>
+            ) : (
+              <img
+                src={theme.palette.mode === 'dark' ? '/google-signin-dark.svg' : '/google-signin-light.svg'}
+                alt="Sign in with Google"
+                width={180}
+                height={40}
+                onError={() => setGoogleButtonFailed(true)}
+              />
+            )}
+          </ButtonBase>
         )}
         {!openIdForced && (
           <div className={classes.extraContainer}>
