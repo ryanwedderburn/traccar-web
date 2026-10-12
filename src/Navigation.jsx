@@ -73,7 +73,7 @@ const Navigation = () => {
 
   const [searchParams, setSearchParams] = useSearchParams();
 
-  const hasQueryParams = ['locale', 'token', 'uniqueId', 'openid'].some((key) =>
+  const hasQueryParams = ['locale', 'token', 'uniqueId', 'deviceId', 'openid'].some((key) =>
     searchParams.has(key),
   );
 
@@ -106,6 +106,20 @@ const Navigation = () => {
           dispatch(devicesActions.selectId(items[0].id));
         }
         newParams.delete('uniqueId');
+      }
+
+      /* OURS: select by device id. ?uniqueId= needs the identifier, which read-only accounts may not look up
+         (identifiers are credentials) - the race-ops "Open on map" link (ops.html) and named officials are
+         read-only. The id is only honoured for a device the session can already see. */
+      if (searchParams.has('deviceId')) {
+        const id = Number(searchParams.get('deviceId'));
+        if (Number.isInteger(id) && id > 0) {
+          const response = await fetch(`/api/devices?id=${id}`, { signal });
+          if (response.ok && (await response.json()).length > 0) {
+            dispatch(devicesActions.selectId(id));
+          }
+        }
+        newParams.delete('deviceId');
       }
 
       if (searchParams.has('openid')) {
