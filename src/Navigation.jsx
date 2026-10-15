@@ -1,5 +1,5 @@
 import { lazy, Suspense } from 'react';
-import { Route, Routes, useSearchParams } from 'react-router-dom';
+import { Route, Routes, useLocation, useSearchParams } from 'react-router-dom';
 import { useDispatch } from 'react-redux';
 import MainPage from './main/MainPage';
 import App from './App';
@@ -72,10 +72,17 @@ const Navigation = () => {
   const { setLocalLanguage } = useLocalization();
 
   const [searchParams, setSearchParams] = useSearchParams();
+  const { pathname } = useLocation();
 
-  const hasQueryParams = ['locale', 'token', 'uniqueId', 'deviceId', 'openid'].some((key) =>
-    searchParams.has(key),
-  );
+  /* OURS: ?deviceId= is a map deep link (race-ops "Open on map" uses /?deviceId=) and is only taken on
+     the map itself. Every report page and Replay keep their own deviceId filter in the URL; consuming
+     it here stripped the device from those pages (15 Oct 2026: Replay sent deviceId=undefined -> 404,
+     and no device could be selected on any report). */
+  const mapDeviceLink = pathname === '/' && searchParams.has('deviceId');
+
+  const hasQueryParams =
+    mapDeviceLink ||
+    ['locale', 'token', 'uniqueId', 'openid'].some((key) => searchParams.has(key));
 
   useAsyncTask(
     async ({ signal }) => {
@@ -111,7 +118,7 @@ const Navigation = () => {
       /* OURS: select by device id. ?uniqueId= needs the identifier, which read-only accounts may not look up
          (identifiers are credentials) - the race-ops "Open on map" link (ops.html) and named officials are
          read-only. The id is only honoured for a device the session can already see. */
-      if (searchParams.has('deviceId')) {
+      if (mapDeviceLink) {
         const id = Number(searchParams.get('deviceId'));
         if (Number.isInteger(id) && id > 0) {
           const response = await fetch(`/api/devices?id=${id}`, { signal });
@@ -131,7 +138,7 @@ const Navigation = () => {
 
       setSearchParams(newParams, { replace: true });
     },
-    [hasQueryParams, searchParams, setSearchParams, dispatch, setLocalLanguage],
+    [hasQueryParams, mapDeviceLink, searchParams, setSearchParams, dispatch, setLocalLanguage],
   );
 
   if (hasQueryParams) {
