@@ -109,7 +109,7 @@ const LibraryPage = () => {
             <TableRow>
               <TableCell colSpan={5}>
                 <Typography variant="body2" color="textSecondary">
-                  No reports yet. When WLAB delivers a report to you, it appears here.
+                  No reports currently
                 </Typography>
               </TableCell>
             </TableRow>
