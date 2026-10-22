@@ -51,6 +51,23 @@ const icon = (item) => {
 
 const KIND_LABEL = { report: 'Report', evidence: 'Evidence', data: 'Data', other: 'File' };
 
+/*
+ * A report says how it was made in the Type column: Custom (built by hand for this account) or
+ * Generated (made by the platform in the standard structure). scripts/library-publish.py stores
+ * that as the start of the note ("Custom report" / "Generated report", optionally "· more text");
+ * the rest of the note, if any, is the line under the title. Ryan, 22 Oct 2026.
+ */
+const ORIGIN = [
+  ['Custom report', 'Custom'],
+  ['Generated report', 'Generated'],
+];
+const describe = (item) => {
+  const note = (item.note || '').trim();
+  const hit = item.kind === 'report' && ORIGIN.find(([prefix]) => note.startsWith(prefix));
+  if (!hit) return { type: KIND_LABEL[item.kind] || item.kind, note };
+  return { type: hit[1], note: note.slice(hit[0].length).replace(/^\s*·\s*/, '') };
+};
+
 const LibraryPage = () => {
   const [items, setItems] = useState(null);
 
@@ -74,37 +91,46 @@ const LibraryPage = () => {
         <TableBody>
           {items === null && <TableShimmer columns={5} />}
           {items &&
-            items.map((item) => (
-              <TableRow key={item.id}>
-                <TableCell>
-                  <Link
-                    href={`/api/library/${item.id}/file`}
-                    target={item.contentType === 'application/pdf' ? '_blank' : undefined}
-                    rel="noopener"
-                    underline="hover"
-                    style={{ display: 'flex', width: 'fit-content', alignItems: 'center', gap: 6 }}
-                  >
-                    {icon(item)}
-                    {item.title}
-                  </Link>
-                  {item.note && (
-                    <Typography variant="caption" color="textSecondary" display="block" sx={{ mt: 0.25, pl: '26px' }}>
-                      {item.note}
-                    </Typography>
-                  )}
-                </TableCell>
-                <TableCell>{item.event || ''}</TableCell>
-                <TableCell>
-                  <Chip
-                    size="small"
-                    label={KIND_LABEL[item.kind] || item.kind}
-                    variant="outlined"
-                  />
-                </TableCell>
-                <TableCell>{date(item)}</TableCell>
-                <TableCell>{size(item.size)}</TableCell>
-              </TableRow>
-            ))}
+            items.map((item) => {
+              const shown = describe(item);
+              return (
+                <TableRow key={item.id}>
+                  <TableCell>
+                    <Link
+                      href={`/api/library/${item.id}/file`}
+                      target={item.contentType === 'application/pdf' ? '_blank' : undefined}
+                      rel="noopener"
+                      underline="hover"
+                      style={{
+                        display: 'flex',
+                        width: 'fit-content',
+                        alignItems: 'center',
+                        gap: 6,
+                      }}
+                    >
+                      {icon(item)}
+                      {item.title}
+                    </Link>
+                    {shown.note && (
+                      <Typography
+                        variant="caption"
+                        color="textSecondary"
+                        display="block"
+                        sx={{ mt: 0.25, pl: '26px' }}
+                      >
+                        {shown.note}
+                      </Typography>
+                    )}
+                  </TableCell>
+                  <TableCell>{item.event || ''}</TableCell>
+                  <TableCell>
+                    <Chip size="small" label={shown.type} variant="outlined" />
+                  </TableCell>
+                  <TableCell>{date(item)}</TableCell>
+                  <TableCell>{size(item.size)}</TableCell>
+                </TableRow>
+              );
+            })}
           {items && !items.length && (
             <TableRow>
               <TableCell colSpan={5}>
