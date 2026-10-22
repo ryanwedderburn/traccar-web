@@ -82,13 +82,13 @@ const LibraryPage = () => {
                     target={item.contentType === 'application/pdf' ? '_blank' : undefined}
                     rel="noopener"
                     underline="hover"
-                    style={{ display: 'inline-flex', alignItems: 'center', gap: 6 }}
+                    style={{ display: 'flex', width: 'fit-content', alignItems: 'center', gap: 6 }}
                   >
                     {icon(item)}
                     {item.title}
                   </Link>
                   {item.note && (
-                    <Typography variant="caption" color="textSecondary" display="block">
+                    <Typography variant="caption" color="textSecondary" display="block" sx={{ mt: 0.25, pl: '26px' }}>
                       {item.note}
                     </Typography>
                   )}
