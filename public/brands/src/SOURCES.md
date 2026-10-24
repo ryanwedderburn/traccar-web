@@ -11,6 +11,7 @@ from the OEM websites"). Originals are kept here unchanged; map icons are made f
 | gasgas.png | GASGAS | https://www.gasgas.com/etc.clientlibs/ktm-common/clientlibs/gas/resources/gasgas-logo-nav.png |
 | husqvarna.png | HQV | https://www.husqvarna-motorcycles.com/content/dam/websites/husqvarna-motorcycles-com/language-masters/en/logo/Husqvarna_Logo_1048x1048.png |
 | rieju.svg | RIEJU | https://rieju.com/assets/_template/img/logo.svg |
+| yamaha.png | YAMAHA | https://global.yamaha-motor.com/shared/img/rwd_identity.png (24 Oct 2026, Hixpania: Pol Tarrés #39; map icon is the emblem + wordmark, tagline cropped) |
 | jarve.svg | JARV-E | https://cdn.prod.website-files.com/68ff8e0dd06dac210b9e1e6c/692db2904411406761a758c5_JARV-E%20Logo_Farbe_Horizontal.svg |
 
 Notes: rieju.svg has `fill="--primary"` (not a valid colour), so it renders black. gasgas.png is

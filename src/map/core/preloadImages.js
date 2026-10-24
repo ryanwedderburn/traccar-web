@@ -78,6 +78,7 @@ export const brandIcons = {
   ktm: '/brands/ktm.png',
   rieju: '/brands/rieju.png',
   sherco: '/brands/sherco.png',
+  yamaha: '/brands/yamaha.png',
 };
 
 const brandAliases = { hqv: 'husqvarna', husky: 'husqvarna', jarv: 'jarve', gas: 'gasgas' };
