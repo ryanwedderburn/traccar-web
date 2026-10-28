@@ -9,6 +9,7 @@ import ReportFilter, { updateReportParams } from './components/ReportFilter';
 import { useTranslation } from '../common/components/LocalizationProvider';
 import PageLayout from '../common/components/PageLayout';
 import ReportsMenu from './components/ReportsMenu';
+import useAthleteUi from '../common/util/useAthleteUi';
 import ColumnSelect from './components/ColumnSelect';
 import usePersistedState from '../common/util/usePersistedState';
 import { useCatch, useCatchCallback } from '../reactHelper';
@@ -28,6 +29,7 @@ const columnsArray = [
 const columnsMap = new Map(columnsArray);
 
 const GeofenceReportPage = () => {
+  const athleteUi = useAthleteUi();
   const { classes } = useReportStyles();
   const t = useTranslation();
   const theme = useTheme();
@@ -98,7 +100,10 @@ const GeofenceReportPage = () => {
   };
 
   return (
-    <PageLayout menu={<ReportsMenu />} breadcrumbs={['reportTitle', 'sharedGeofences']}>
+    <PageLayout
+      menu={<ReportsMenu />}
+      breadcrumbs={['reportTitle', athleteUi ? 'Places' : 'sharedGeofences']}
+    >
       <div className={classes.header}>
         <ReportFilter
           onShow={onShow}

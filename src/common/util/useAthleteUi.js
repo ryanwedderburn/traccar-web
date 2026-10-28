@@ -9,6 +9,9 @@ import { useSelector } from 'react-redux';
  * Why gated at all: the event host carries ~500 read-only rider accounts, and a
  * health-data entry appearing in their menu before the feature is offered there
  * would be a question at the scrutineering desk nobody can answer yet.
+ *
+ * Since 28 Oct 2026 the same switch also gives Reports the athlete menu (Rides,
+ * My reports, Places; claude/athlete-menu-spec.md): an athlete host is one switch.
  */
 const truthy = (value) => value === true || value === 'true';
 

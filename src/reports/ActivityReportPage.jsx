@@ -41,6 +41,7 @@ import { useAttributePreference } from '../common/util/preferences';
 import { useTranslation } from '../common/components/LocalizationProvider';
 import PageLayout from '../common/components/PageLayout';
 import ReportsMenu from './components/ReportsMenu';
+import useAthleteUi from '../common/util/useAthleteUi';
 import ColumnSelect from './components/ColumnSelect';
 import ResizeHandle from './components/ResizeHandle';
 import usePersistedState from '../common/util/usePersistedState';
@@ -108,6 +109,7 @@ const fileNameOf = (response, fallback) => {
 };
 
 const ActivityReportPage = () => {
+  const athleteUi = useAthleteUi();
   const navigate = useNavigate();
   const { classes } = useReportStyles();
   const t = useTranslation();
@@ -378,7 +380,10 @@ const ActivityReportPage = () => {
   };
 
   return (
-    <PageLayout menu={<ReportsMenu />} breadcrumbs={['reportTitle', 'Activities']}>
+    <PageLayout
+      menu={<ReportsMenu />}
+      breadcrumbs={['reportTitle', athleteUi ? 'Rides' : 'Activities']}
+    >
       <div className={classes.container}>
         {selectedItem && (
           <>
