@@ -28,3 +28,29 @@ export const roleByCategory = (category) => {
 };
 
 export const roleName = (id) => DEVICE_ROLES.find((role) => role.id === id)?.name || id;
+
+// OURS: who carries a unit that is not fitted to a bike or vehicle (Ryan, 30 Oct: "Personal is
+// quite generic ... split that into Athlete, Crew, etc"). Device attribute `carrier`; it names the
+// activity type for handhelds and phones. Unset: Athlete for a competitor or rider, else Personal.
+export const CARRIERS = [
+  { id: 'athlete', name: 'Athlete', help: 'Carried by the rider or competitor.' },
+  { id: 'crew', name: 'Crew', help: 'Support crew, pit or chase.' },
+  { id: 'official', name: 'Official', help: 'Race officials, sweep, marshals.' },
+  { id: 'media', name: 'Media', help: 'Media or camera crew.' },
+  { id: 'medic', name: 'Medic', help: 'Medical staff.' },
+  { id: 'personal', name: 'Personal', help: 'Anyone else.' },
+];
+
+export const BIKE_CATEGORIES = RIDERS;
+
+/* The activity type for a unit: an `activityType` override, else Drive for a vehicle, Bike for a
+   unit on a bike, else who carries it. `role` is the activity's stored role. */
+export const activityTypeOf = (role, device) => {
+  const named = device?.attributes?.activityType;
+  if (named) return String(named);
+  if (role === 'vehicle') return 'Drive';
+  if (RIDERS.includes(device?.category)) return 'Bike';
+  const carrier = CARRIERS.find((c) => c.id === device?.attributes?.carrier);
+  if (carrier) return carrier.name;
+  return role === 'competitor' || role === 'rider' ? 'Athlete' : 'Personal';
+};

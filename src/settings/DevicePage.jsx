@@ -16,7 +16,13 @@ import EditItemView from './components/EditItemView';
 import EditAttributesAccordion from './components/EditAttributesAccordion';
 import SelectField from '../common/components/SelectField';
 import deviceCategories from '../common/util/deviceCategories';
-import { DEVICE_ROLES, roleByCategory, roleName } from '../common/util/deviceRoles';
+import {
+  DEVICE_ROLES,
+  CARRIERS,
+  BIKE_CATEGORIES,
+  roleByCategory,
+  roleName,
+} from '../common/util/deviceRoles';
 import { useTranslation } from '../common/components/LocalizationProvider';
 import useDeviceAttributes from '../common/attributes/useDeviceAttributes';
 import { useManager } from '../common/util/permissions';
@@ -152,6 +158,35 @@ const DevicePage = () => {
                   'From the category. A device in an event class counts as a competitor.'
                 }
               />
+              {/* OURS: who carries a unit that is not on a bike or vehicle - names its activities. */}
+              {!BIKE_CATEGORIES.includes(item.category) &&
+                roleByCategory(item.category || 'default') !== 'vehicle' &&
+                item.attributes?.role !== 'vehicle' && (
+                  <SelectField
+                    value={item.attributes?.carrier || 'auto'}
+                    onChange={(event) => {
+                      // eslint-disable-next-line no-unused-vars
+                      const { carrier, ...rest } = item.attributes || {};
+                      const value = event.target.value;
+                      setItem({
+                        ...item,
+                        attributes: value && value !== 'auto' ? { ...rest, carrier: value } : rest,
+                      });
+                    }}
+                    data={[
+                      {
+                        id: 'auto',
+                        name: 'Automatic - Athlete for a competitor or rider, else Personal',
+                      },
+                      ...CARRIERS,
+                    ]}
+                    label="Carried by"
+                    helperText={
+                      CARRIERS.find((c) => c.id === item.attributes?.carrier)?.help ||
+                      "Names this unit's activities (Athlete, Crew, Official ...)."
+                    }
+                  />
+                )}
               <SelectField
                 value={item.calendarId}
                 onChange={(event) => setItem({ ...item, calendarId: Number(event.target.value) })}

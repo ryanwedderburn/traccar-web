@@ -3,6 +3,7 @@
 import { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useSelector } from 'react-redux';
+import { activityTypeOf } from '../common/util/deviceRoles';
 import { useTheme } from '@mui/material/styles';
 import {
   Box,
@@ -73,18 +74,9 @@ const columnsArray = [
 ];
 const columnsMap = new Map(columnsArray);
 
-/* What kind of activity, from the UNIT, not the movement (Ryan, 30 Oct: "'on foot' should not be
-   Ride. Rather 'Personal'. The fmc would be 'Bike'"). A unit on the bike = Bike; a vehicle = Drive;
-   anything carried by the person (handheld, phone) = Personal. A device attribute `activityType`
-   names it outright where the category says otherwise. */
-const BIKE_CATEGORIES = ['motorcycle', 'bicycle', 'scooter'];
-const typeOf = (item, device) => {
-  const named = device?.attributes?.activityType;
-  if (named) return String(named);
-  if (item.role === 'vehicle') return 'Drive';
-  if (BIKE_CATEGORIES.includes(device?.category)) return 'Bike';
-  return 'Personal';
-};
+/* What kind of activity, from the UNIT (Ryan, 30 Oct): Bike, Drive, or who carries it (Athlete,
+   Crew, Official, Media, Medic, Personal) - deviceRoles.activityTypeOf. */
+const typeOf = (item, device) => activityTypeOf(item.role, device);
 
 // Trip classification for the travel logbook (REPORTING.md, R9): vehicle trips only, once finished.
 const VEHICLE_CATEGORIES = ['car', 'van', 'truck', 'bus', 'camper', 'tractor'];
