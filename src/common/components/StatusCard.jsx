@@ -20,6 +20,7 @@ import {
   Tooltip,
 } from '@mui/material';
 import { makeStyles } from 'tss-react/mui';
+import { alpha } from '@mui/material/styles';
 import CloseIcon from '@mui/icons-material/Close';
 import RouteIcon from '@mui/icons-material/Route';
 import SendIcon from '@mui/icons-material/Send';
@@ -41,11 +42,195 @@ import EquipmentGauges from './EquipmentGauges';
 import TimingRows from './TimingRows';
 import fetchOrThrow from '../util/fetchOrThrow';
 import { AGREE, APART, STALE } from '../util/competitorPairing';
+import { brandIcons, brandKey } from '../../map/core/preloadImages';
+import { speedFromKnots, speedUnitString } from '../util/converter';
+import { roleByCategory, roleName } from '../util/deviceRoles';
+
+const CARD_WIDTH = 330;
+const DISPLAY_FONT = '"Oswald", "Arial Narrow", sans-serif';
 
 const useStyles = makeStyles()((theme, { desktopPadding }) => ({
   card: {
     pointerEvents: 'auto',
-    width: theme.dimensions.popupMaxWidth,
+    // OURS: a little wider than stock (288) so three headline tiles fit.
+    width: `min(${CARD_WIDTH}px, calc(100vw - 24px))`,
+    borderRadius: 14,
+    overflow: 'hidden',
+  },
+  /* ---- OURS: the card redesign (Ryan, 2026-10-30: "The text is bland. We can make it more
+     visually appealing"; mock-up approved the same day). Status first, three headline tiles,
+     course progress as a bar, then the remaining details. Same data as before. */
+  hero: {
+    display: 'flex',
+    alignItems: 'center',
+    gap: theme.spacing(1.25),
+    padding: theme.spacing(1.25, 1, 1.25, 1.5),
+    background: '#1B1A18',
+    color: '#fff',
+    borderBottom: `3px solid ${theme.palette.primary.main}`,
+    cursor: 'move',
+  },
+  avatar: {
+    width: 38,
+    height: 38,
+    borderRadius: '50%',
+    flex: 'none',
+    display: 'grid',
+    placeItems: 'center',
+    overflow: 'hidden',
+    background: '#fff',
+    color: '#111',
+    fontWeight: 700,
+    fontSize: 12,
+    '& img': { width: '80%', height: '80%', objectFit: 'contain' },
+  },
+  avatarNumber: {
+    background: theme.palette.primary.main,
+    color: theme.palette.primary.contrastText,
+    fontFamily: DISPLAY_FONT,
+    fontWeight: 600,
+    fontSize: 16,
+  },
+  who: { minWidth: 0, flex: 1 },
+  whoName: {
+    display: 'block',
+    fontFamily: DISPLAY_FONT,
+    fontWeight: 600,
+    fontSize: 17,
+    lineHeight: 1.1,
+    letterSpacing: '0.03em',
+    textTransform: 'uppercase',
+    whiteSpace: 'nowrap',
+    overflow: 'hidden',
+    textOverflow: 'ellipsis',
+  },
+  whoSub: {
+    fontSize: 12,
+    color: 'rgba(255,255,255,.72)',
+    display: 'block',
+    whiteSpace: 'nowrap',
+    overflow: 'hidden',
+    textOverflow: 'ellipsis',
+  },
+  close: { color: 'rgba(255,255,255,.75)' },
+  statusLine: {
+    display: 'flex',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    gap: theme.spacing(1),
+    padding: theme.spacing(1.25, 1.75, 0.25),
+  },
+  pill: {
+    display: 'inline-flex',
+    alignItems: 'center',
+    gap: 6,
+    fontWeight: 600,
+    fontSize: 12,
+    padding: '3px 9px',
+    borderRadius: 99,
+    background: theme.palette.action.hover,
+    color: theme.palette.text.primary,
+    '& i': { width: 8, height: 8, borderRadius: '50%', flex: 'none' },
+  },
+  age: { fontSize: 12, color: theme.palette.text.secondary, whiteSpace: 'nowrap' },
+  tiles: {
+    display: 'grid',
+    gridTemplateColumns: 'repeat(3, minmax(0, 1fr))',
+    gap: theme.spacing(1),
+    padding: theme.spacing(1.25, 1.75),
+  },
+  tile: {
+    background: theme.palette.action.hover,
+    borderRadius: 10,
+    padding: theme.spacing(0.75, 1.25),
+    minWidth: 0,
+  },
+  tileWarn: { background: alpha(theme.palette.warning.main, 0.16) },
+  tileBad: { background: alpha(theme.palette.error.main, 0.14) },
+  tileKey: {
+    fontSize: 11,
+    fontWeight: 600,
+    letterSpacing: '0.06em',
+    textTransform: 'uppercase',
+    color: theme.palette.text.secondary,
+    whiteSpace: 'nowrap',
+  },
+  tileValue: {
+    fontFamily: DISPLAY_FONT,
+    fontWeight: 500,
+    fontSize: 25,
+    lineHeight: 1.05,
+    fontVariantNumeric: 'tabular-nums',
+    whiteSpace: 'nowrap',
+    '& small': {
+      fontFamily: theme.typography.fontFamily,
+      fontSize: 12,
+      color: theme.palette.text.secondary,
+      marginLeft: 2,
+    },
+  },
+  tileSub: {
+    fontSize: 11,
+    color: theme.palette.text.secondary,
+    whiteSpace: 'nowrap',
+    overflow: 'hidden',
+    textOverflow: 'ellipsis',
+  },
+  bars: {
+    display: 'inline-flex',
+    gap: 2,
+    alignItems: 'flex-end',
+    height: 12,
+    marginLeft: 4,
+    '& i': { width: 3, borderRadius: 1, background: theme.palette.text.primary },
+    '& i.off': { background: theme.palette.divider },
+  },
+  progress: { padding: theme.spacing(0.25, 1.75, 1.25) },
+  progressTop: {
+    display: 'flex',
+    justifyContent: 'space-between',
+    fontSize: 12,
+    color: theme.palette.text.secondary,
+    marginBottom: 5,
+    '& b': { color: theme.palette.text.primary, fontWeight: 600 },
+  },
+  track: {
+    height: 8,
+    borderRadius: 99,
+    background: theme.palette.action.selected,
+    position: 'relative',
+    overflow: 'hidden',
+    '& > i': {
+      position: 'absolute',
+      left: 0,
+      top: 0,
+      bottom: 0,
+      borderRadius: 99,
+      background: theme.palette.primary.main,
+    },
+    '& > u': {
+      position: 'absolute',
+      top: 0,
+      bottom: 0,
+      width: 2,
+      background: theme.palette.background.paper,
+    },
+  },
+  progressBottom: {
+    display: 'flex',
+    justifyContent: 'space-between',
+    gap: 8,
+    fontSize: 12,
+    marginTop: 5,
+    '& span': { color: theme.palette.text.secondary },
+  },
+  more: { padding: theme.spacing(0.5, 1.75, 1), fontSize: 12 },
+  actionLabel: { display: 'block', fontSize: 10.5, fontWeight: 600, lineHeight: 1, marginTop: 2 },
+  actionButton: {
+    flexDirection: 'column',
+    borderRadius: 8,
+    padding: theme.spacing(0.5, 0.75),
+    minWidth: 52,
   },
   header: {
     display: 'flex',
@@ -62,8 +247,9 @@ const useStyles = makeStyles()((theme, { desktopPadding }) => ({
     },
   },
   content: {
-    paddingTop: theme.spacing(1),
-    paddingBottom: theme.spacing(1),
+    paddingTop: theme.spacing(0.5),
+    paddingBottom: theme.spacing(0.5),
+    borderTop: `1px solid ${theme.palette.divider}`,
     maxHeight: theme.dimensions.cardContentMaxHeight,
     overflow: 'auto',
   },
@@ -84,8 +270,13 @@ const useStyles = makeStyles()((theme, { desktopPadding }) => ({
   cell: {
     borderBottom: 'none',
   },
+  // OURS: detail rows read as label (quiet) and value (strong, right-aligned).
+  rowName: { color: theme.palette.text.secondary },
+  rowValue: { fontWeight: 600, textAlign: 'right' },
   actions: {
     justifyContent: 'space-between',
+    borderTop: `1px solid ${theme.palette.divider}`,
+    padding: theme.spacing(0.5, 0.75),
   },
   root: {
     pointerEvents: 'none',
@@ -110,10 +301,12 @@ const StatusRow = ({ name, content }) => {
   return (
     <TableRow>
       <TableCell className={classes.cell}>
-        <Typography variant="body2">{name}</Typography>
+        <Typography variant="body2" className={classes.rowName}>
+          {name}
+        </Typography>
       </TableCell>
       <TableCell className={classes.cell}>
-        <Typography variant="body2" color="textSecondary">
+        <Typography variant="body2" component="div" className={classes.rowValue}>
           {content}
         </Typography>
       </TableCell>
@@ -194,7 +387,7 @@ const CompetitorRows = ({ competitor, devices }) => {
 
   return (
     <>
-      <StatusRow name="Competitor" content={subjectRef ? `${label} · ${subjectRef}` : label} />
+      {subjectRef && <StatusRow name="Competitor" content={`${label} · ${subjectRef}`} />}
       {deviceIds?.length > 1 && <StatusRow name="Sources" content={sources} />}
       {agreement && <StatusRow name="Agreement" content={agreement} />}
     </>
@@ -211,40 +404,246 @@ const CompetitorRows = ({ competitor, devices }) => {
 const km = (metres) => (Number(metres) / 1000).toFixed(1);
 const clock = (iso) => new Date(iso).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
 
-const ProgressRows = ({ position }) => {
+/* OURS: course progress as a bar (was two table rows). Same attributes, same witness wording. */
+const ProgressBar = ({ position, classes }) => {
   const attributes = position?.attributes || {};
   if (attributes.routeLength == null) {
     return null;
   }
   // An open course (crew record button, no event days) is keyed by its date,
-  // not a day name - "Day 2026-10-04 course" reads as a bug.
+  // not a day name - "Day 2026-10-04" reads as a bug.
   const courseName = /^\d{4}-\d{2}-\d{2}$/.test(String(attributes.routeDay))
     ? 'Course'
-    : `Day ${attributes.routeDay} course`;
-  // Lapped courses carry their lap; length and to-go are over all laps.
-  const name =
-    attributes.routeLaps > 1
-      ? `${courseName} · lap ${attributes.routeLap} of ${attributes.routeLaps}`
-      : courseName;
-  let content;
-  if (attributes.routeAlong != null) {
-    content = `${km(attributes.routeAlong)} of ${km(attributes.routeLength)} km · ${km(attributes.routeToGo)} km to go`;
-  } else if (attributes.routeOff) {
-    content =
+    : `Day ${attributes.routeDay}`;
+  const laps = Number(attributes.routeLaps) > 1 ? Number(attributes.routeLaps) : 0;
+  const length = Number(attributes.routeLength);
+  const along = attributes.routeAlong != null ? Number(attributes.routeAlong) : null;
+  const share = along != null && length > 0 ? Math.min(Math.max(along / length, 0), 1) : 0;
+  const off = along == null && attributes.routeOff;
+  let bottomLeft;
+  let bottomRight;
+  if (along != null) {
+    bottomLeft = `${km(along)} km`;
+    bottomRight = `${km(attributes.routeToGo)} km to go of ${km(length)}`;
+  } else if (off) {
+    bottomLeft = 'Not on the course';
+    bottomRight =
       Number(attributes.routeFurthest) > 0
-        ? `Not on the course · furthest seen ${km(attributes.routeFurthest)} km`
-        : 'Not on the course';
+        ? `furthest seen ${km(attributes.routeFurthest)} km`
+        : '';
   } else {
-    content = `${km(attributes.routeLength)} km`;
+    bottomLeft = `${km(length)} km`;
+    bottomRight = '';
   }
   return (
-    <>
-      <StatusRow name={name} content={content} />
-      {attributes.routeFinished && (
-        <StatusRow name="Seen at finish" content={clock(attributes.routeFinished)} />
-      )}
-    </>
+    <div className={classes.progress}>
+      <div className={classes.progressTop}>
+        <span>
+          <b>{courseName}</b>
+          {laps ? ` · lap ${attributes.routeLap} of ${laps}` : ''}
+        </span>
+        <span>
+          {attributes.routeFinished
+            ? `Seen at finish ${clock(attributes.routeFinished)}`
+            : along != null
+              ? `${Math.round(share * 100)} %`
+              : ''}
+        </span>
+      </div>
+      <div className={classes.track}>
+        <i style={{ width: `${(attributes.routeFinished ? 1 : share) * 100}%` }} />
+        {laps > 1 &&
+          laps <= 20 &&
+          Array.from({ length: laps - 1 }, (_, i) => (
+            <u key={i} style={{ left: `${((i + 1) / laps) * 100}%` }} />
+          ))}
+      </div>
+      <div className={classes.progressBottom}>
+        <b>{bottomLeft}</b>
+        <span>{bottomRight}</span>
+      </div>
+    </div>
   );
+};
+
+/* OURS: what the unit is, for choosing its headline tiles. */
+const kindOf = (position) => {
+  const a = position?.attributes || {};
+  if (position?.protocol === 'osmand') return 'phone';
+  if (Number(a.power) > 0) return 'supply';
+  if (Number(a.battery) > 0 || a.batteryLevel != null) return 'battery';
+  return 'other';
+};
+
+/* Provisional limits until the low-voltage alerts (claude/low-voltage-alerts-spec.md) give each
+   bike its own learned rest voltage; the card will read the same thresholds then. */
+const toneSupply = (v) => (v < 12.4 ? 'bad' : v < 12.8 ? 'warn' : '');
+const toneCell = (v) => (v < 3.5 ? 'bad' : v < 3.65 ? 'warn' : '');
+const toneLevel = (v) => (v < 10 ? 'bad' : v < 20 ? 'warn' : '');
+
+const ageText = (seconds) => {
+  if (seconds < 90) return `${Math.max(0, Math.round(seconds))} s`;
+  if (seconds < 5400) return `${Math.round(seconds / 60)} min`;
+  if (seconds < 172800) return `${Math.round(seconds / 3600)} h`;
+  return `${Math.round(seconds / 86400)} d`;
+};
+
+/* The status line. Facts the record states, in the words Race Operations uses. */
+const statusOf = (device, position, theme) => {
+  const a = position.attributes || {};
+  const now = Date.now();
+  const heard = Date.parse(device.lastUpdate || position.fixTime);
+  const silent = (now - heard) / 1000;
+  const kmh = (Number(position.speed) || 0) * 1.852;
+  const onCourse = a.routeAlong != null;
+  if (a.routeFinished) {
+    return { colour: theme.palette.info.main, text: `Seen at finish ${clock(a.routeFinished)}` };
+  }
+  if (device.status !== 'online' && silent > 600) {
+    return { colour: theme.palette.error.main, text: `No signal ${ageText(silent)}` };
+  }
+  if (a.routeOff && !onCourse) {
+    return { colour: theme.palette.warning.main, text: 'Off the course' };
+  }
+  if (kmh >= 3) {
+    return {
+      colour: theme.palette.success.main,
+      text: onCourse ? 'Moving · on course' : 'Moving',
+      pulse: true,
+    };
+  }
+  if (a.ignition === false && kindOf(position) === 'supply') {
+    return { colour: theme.palette.warning.main, text: 'Parked · ignition off' };
+  }
+  return { colour: theme.palette.warning.main, text: onCourse ? 'Stopped · on course' : 'Stopped' };
+};
+
+/* Race number for a competitor, else the bike-brand logo, else the name's first letter. */
+const Avatar = ({ device, competitor, classes, cx }) => {
+  const brand = brandKey(device);
+  if (competitor?.label) {
+    return <div className={cx(classes.avatar, classes.avatarNumber)}>{competitor.label}</div>;
+  }
+  if (brand) {
+    return (
+      <div className={classes.avatar}>
+        <img src={brandIcons[brand]} alt={brand} />
+      </div>
+    );
+  }
+  return (
+    <div className={cx(classes.avatar, classes.avatarNumber)}>
+      {String(device.name || '?')
+        .trim()
+        .charAt(0)
+        .toUpperCase()}
+    </div>
+  );
+};
+
+const StatusLine = ({ device, position, theme, classes }) => {
+  const status = statusOf(device, position, theme);
+  const fixAge = (Date.now() - Date.parse(position.fixTime)) / 1000;
+  return (
+    <div className={classes.statusLine}>
+      <span className={classes.pill}>
+        <i style={{ background: status.colour }} />
+        {status.text}
+      </span>
+      <span className={classes.age}>fix {relativeAge(Math.round(fixAge))}</span>
+    </div>
+  );
+};
+
+const Bars = ({ value, classes }) => (
+  <span className={classes.bars}>
+    {[4, 6, 8, 10, 12].map((h, i) => (
+      <i key={h} className={i < value ? '' : 'off'} style={{ height: h }} />
+    ))}
+  </span>
+);
+
+const Tile = ({ classes, cx, label, value, unit, sub, tone }) => (
+  <div
+    className={cx(
+      classes.tile,
+      tone === 'warn' && classes.tileWarn,
+      tone === 'bad' && classes.tileBad,
+    )}
+  >
+    <div className={classes.tileKey}>{label}</div>
+    <div className={classes.tileValue}>
+      {value}
+      {unit && <small>{unit}</small>}
+    </div>
+    {sub && <div className={classes.tileSub}>{sub}</div>}
+  </div>
+);
+
+/* Three headline numbers, chosen by what the unit reports. Returns the tiles and the
+   position keys they cover, so the detail rows below don't repeat them. */
+const headline = (position, speedUnit, t, classes) => {
+  const a = position.attributes || {};
+  const kind = kindOf(position);
+  const tiles = [];
+  const shown = ['speed'];
+  tiles.push({
+    label: 'Speed',
+    value: Math.round(speedFromKnots(Number(position.speed) || 0, speedUnit)),
+    unit: speedUnitString(speedUnit, t),
+    sub: position.altitude ? `alt ${Math.round(position.altitude)} m` : null,
+  });
+  if (kind === 'supply') {
+    const v = Number(a.power);
+    tiles.push({
+      label: 'Supply',
+      value: v.toFixed(2),
+      unit: 'V',
+      tone: toneSupply(v),
+      sub: a.ignition != null ? `ignition ${a.ignition ? 'on' : 'off'}` : null,
+    });
+    shown.push('power', 'ignition');
+  } else if (a.batteryLevel != null) {
+    const v = Number(a.batteryLevel);
+    tiles.push({
+      label: 'Battery',
+      value: Math.round(v),
+      unit: '%',
+      tone: toneLevel(v),
+      sub:
+        Number(a.battery) > 0 ? `${Number(a.battery).toFixed(2)} V` : a.charge ? 'charging' : null,
+    });
+    shown.push('batteryLevel', 'battery', 'charge');
+  } else if (Number(a.battery) > 0) {
+    const v = Number(a.battery);
+    tiles.push({ label: 'Battery', value: v.toFixed(2), unit: 'V', tone: toneCell(v) });
+    shown.push('battery');
+  }
+  if (a.rssi != null && a.rssi <= 5) {
+    tiles.push({
+      label: 'Signal',
+      value: (
+        <>
+          {Math.round(a.rssi)}
+          <small>/5</small>
+          <Bars value={Math.round(a.rssi)} classes={classes} />
+        </>
+      ),
+      sub: a.sat != null ? `${a.sat} satellites` : null,
+    });
+    shown.push('rssi', 'sat');
+  } else if (a.sat != null) {
+    tiles.push({
+      label: 'Satellites',
+      value: a.sat,
+      sub: a.hdop != null ? `HDOP ${a.hdop}` : null,
+    });
+    shown.push('sat', 'hdop');
+  } else if (position.accuracy) {
+    tiles.push({ label: 'Accuracy', value: Math.round(position.accuracy), unit: 'm' });
+    shown.push('accuracy');
+  }
+  return { tiles: tiles.slice(0, 3), shown };
 };
 
 const StatusCard = ({
@@ -255,7 +654,8 @@ const StatusCard = ({
   disableActions,
   desktopPadding = 0,
 }) => {
-  const { classes } = useStyles({ desktopPadding });
+  const { classes, cx, theme } = useStyles({ desktopPadding });
+  const speedUnit = useAttributePreference('speedUnit');
   const navigate = useNavigate();
   const dispatch = useDispatch();
   const t = useTranslation();
@@ -323,19 +723,35 @@ const StatusCard = ({
             style={{ position: 'relative' }}
           >
             <Card elevation={3} className={classes.card}>
-              <CardMedia
-                className={`draggable-header ${deviceImage ? classes.media : ''}`}
-                image={deviceImage && `/api/media/${device.uniqueId}/${deviceImage}`}
-              >
-                <div className={classes.header}>
-                  <Typography variant="body2" color="inherit">
-                    {device.name}
-                  </Typography>
-                  <IconButton size="small" color="inherit" onClick={onClose} onTouchStart={onClose}>
-                    <CloseIcon fontSize="small" />
-                  </IconButton>
+              {deviceImage && (
+                <CardMedia
+                  className={`draggable-header ${classes.media}`}
+                  image={`/api/media/${device.uniqueId}/${deviceImage}`}
+                />
+              )}
+              <div className={`draggable-header ${classes.hero}`}>
+                <Avatar device={device} competitor={competitor} classes={classes} cx={cx} />
+                <div className={classes.who}>
+                  <span className={classes.whoName}>{device.name}</span>
+                  <span className={classes.whoSub}>
+                    {[
+                      device.attributes?.brand,
+                      roleName(device.attributes?.role || roleByCategory(device.category)),
+                      device.model,
+                    ]
+                      .filter(Boolean)
+                      .join(' · ')}
+                  </span>
                 </div>
-              </CardMedia>
+                <IconButton
+                  size="small"
+                  className={classes.close}
+                  onClick={onClose}
+                  onTouchStart={onClose}
+                >
+                  <CloseIcon fontSize="small" />
+                </IconButton>
+              </div>
               {/* NO POSITION, ON A SPECTATOR HOST, IS NOT A FAULT.
                   The spectator account only receives positions inside the
                   event area (the public-area filter), so a rider at home, in
@@ -353,19 +769,35 @@ const StatusCard = ({
                   </Typography>
                 </CardContent>
               )}
+              {position && (
+                <StatusLine device={device} position={position} theme={theme} classes={classes} />
+              )}
               {position && equipmentUi && <EquipmentGauges position={position} device={device} />}
+              {position && !equipmentUi && (
+                <div className={classes.tiles}>
+                  {headline(position, speedUnit, t, classes).tiles.map((tile) => (
+                    <Tile key={tile.label} classes={classes} cx={cx} {...tile} />
+                  ))}
+                </div>
+              )}
+              {position && <ProgressBar position={position} classes={classes} />}
               {position && (
                 <CardContent className={classes.content}>
                   <Table size="small" className={classes.table}>
                     <TableBody>
                       <CompetitorRows competitor={competitor} devices={devices} />
-                      <ProgressRows position={position} />
                       <TimingRows deviceId={deviceId} Row={StatusRow} />
                       {positionItems
                         .split(',')
                         .filter(
                           (key) =>
                             position.hasOwnProperty(key) || position.attributes.hasOwnProperty(key),
+                        )
+                        .filter(
+                          (key) =>
+                            key !== 'fixTime' &&
+                            (equipmentUi ||
+                              !headline(position, speedUnit, t, classes).shown.includes(key)),
                         )
                         .map((key) => (
                           <StatusRow
