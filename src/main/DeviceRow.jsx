@@ -31,7 +31,7 @@ import {
   getStatusColor,
 } from '../common/util/formatter';
 import { useTranslation } from '../common/components/LocalizationProvider';
-import { brandIcons, brandKey, mapIconKey, mapIcons } from '../map/core/preloadImages';
+import { brandIcons, brandKey, mapIcons, unitIconKey } from '../map/core/preloadImages';
 import { useAdministrator } from '../common/util/permissions';
 import EngineIcon from '../resources/images/data/engine.svg?react';
 import { useAttributePreference } from '../common/util/preferences';
@@ -221,7 +221,7 @@ const DeviceRow = ({ devices, competitors, index, style }) => {
             </Avatar>
           ) : (
             <Avatar>
-              <img className={classes.icon} src={mapIcons[mapIconKey(item.category)]} alt="" />
+              <img className={classes.icon} src={mapIcons[unitIconKey(item)]} alt="" />
             </Avatar>
           )}
         </ListItemAvatar>

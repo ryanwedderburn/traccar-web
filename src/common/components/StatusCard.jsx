@@ -44,9 +44,9 @@ import EquipmentGauges from './EquipmentGauges';
 import TimingRows from './TimingRows';
 import fetchOrThrow from '../util/fetchOrThrow';
 import { AGREE, APART, STALE } from '../util/competitorPairing';
-import { brandIcons, brandKey } from '../../map/core/preloadImages';
+import { brandIcons, brandKey, mapIcons, unitIconKey } from '../../map/core/preloadImages';
 import { speedFromKnots, speedUnitString } from '../util/converter';
-import { roleByCategory, roleName } from '../util/deviceRoles';
+import { unitTypeOf } from '../util/deviceRoles';
 
 const CARD_WIDTH = 330;
 const DISPLAY_FONT = '"Oswald", "Arial Narrow", sans-serif';
@@ -563,12 +563,10 @@ const Avatar = ({ device, competitor, classes, cx }) => {
       </div>
     );
   }
+  // No race number or logo: the unit's icon, the same one as on the map and in the list.
   return (
     <div className={cx(classes.avatar, classes.avatarNumber)}>
-      {String(device.name || '?')
-        .trim()
-        .charAt(0)
-        .toUpperCase()}
+      <img className={classes.icon} src={mapIcons[unitIconKey(device)]} alt="" />
     </div>
   );
 };
@@ -786,13 +784,9 @@ const StatusCard = ({
                 <div className={classes.who}>
                   <span className={classes.whoName}>{headerName(device, competitor)}</span>
                   <span className={classes.whoSub}>
-                    {[
-                      device.attributes?.brand,
-                      roleName(device.attributes?.role || roleByCategory(device.category)),
-                      device.model,
-                    ]
-                      .filter(Boolean)
-                      .join(' · ')}
+                    {/* Branding rules (30 Oct): no vehicle maker, no tracker model - the team,
+                        when set, and the unit's type. */}
+                    {[device.attributes?.team, unitTypeOf(device)].filter(Boolean).join(' · ')}
                   </span>
                 </div>
                 <IconButton

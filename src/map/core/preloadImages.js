@@ -26,9 +26,22 @@ import trainSvg from '../../resources/images/icon/train.svg';
 import tramSvg from '../../resources/images/icon/tram.svg';
 import truckSvg from '../../resources/images/icon/truck.svg';
 import vanSvg from '../../resources/images/icon/van.svg';
+// OURS: who carries a unit (deviceRoles CARRIERS) - Material Symbols, the same family as the
+// stock icons above (Apache 2.0, @material-symbols/svg-400 0.48.2, filled).
+import athleteSvg from '../../resources/images/icon/athlete.svg';
+import crewSvg from '../../resources/images/icon/crew.svg';
+import officialSvg from '../../resources/images/icon/official.svg';
+import mediaSvg from '../../resources/images/icon/media.svg';
+import medicSvg from '../../resources/images/icon/medic.svg';
+import { roleByCategory } from '../../common/util/deviceRoles';
 
 export const mapIcons = {
   animal: animalSvg,
+  athlete: athleteSvg,
+  crew: crewSvg,
+  official: officialSvg,
+  media: mediaSvg,
+  medic: medicSvg,
   bicycle: bicycleSvg,
   boat: boatSvg,
   bus: busSvg,
@@ -95,9 +108,23 @@ export const brandKey = (device) => {
 };
 
 /** The map image prefix: `brand-<key>` for a known brand, else the category icon. */
+/* OURS (Ryan, 30 Oct: names stay the person's, the type is an icon). A unit fitted to a bike or
+   vehicle keeps its category icon; a carried unit shows who carries it - its `carrier`, else the
+   athlete icon for a competitor or rider, else the category icon (person). */
+const CARRIED = ['person', 'default', undefined, null, ''];
+export const unitIconKey = (device) => {
+  const carrier = device?.attributes?.carrier;
+  if (CARRIED.includes(device?.category)) {
+    if (carrier && carrier !== 'personal' && mapIcons[carrier]) return carrier;
+    const role = device?.attributes?.role || roleByCategory(device?.category || 'default');
+    if (!carrier && (role === 'competitor' || role === 'rider')) return 'athlete';
+  }
+  return mapIconKey(device?.category);
+};
+
 export const deviceIconKey = (device) => {
   const brand = brandKey(device);
-  return brand ? `brand-${brand}` : mapIconKey(device?.category);
+  return brand ? `brand-${brand}` : unitIconKey(device);
 };
 
 export const mapImages = {};

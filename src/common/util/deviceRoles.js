@@ -54,3 +54,7 @@ export const activityTypeOf = (role, device) => {
   if (carrier) return carrier.name;
   return role === 'competitor' || role === 'rider' ? 'Athlete' : 'Personal';
 };
+
+/* The activity-type word for a unit as it is NOW (no stored activity): for icons and pickers. */
+export const unitTypeOf = (device) =>
+  activityTypeOf(device?.attributes?.role || roleByCategory(device?.category || 'default'), device);

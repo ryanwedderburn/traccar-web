@@ -15,6 +15,7 @@ import { useTranslation } from '../../common/components/LocalizationProvider';
 import useReportStyles from '../common/useReportStyles';
 import SplitButton from '../../common/components/SplitButton';
 import SelectField from '../../common/components/SelectField';
+import { unitTypeOf } from '../../common/util/deviceRoles';
 import { useRestriction } from '../../common/util/permissions';
 import { deviceEquality } from '../../common/util/deviceEquality';
 
@@ -52,7 +53,18 @@ const ReportFilter = ({
   const deviceList = useMemo(
     () => [
       { id: 'all', name: t('notificationAlways') },
-      ...Object.values(devices).sort((a, b) => a.name.localeCompare(b.name)),
+      // Two units can share the person's name (Maddi's bike unit and handheld): a picker has no
+      // icons, so those get their type - "Maddi · Bike", "Maddi · Athlete".
+      ...(() => {
+        const list = Object.values(devices);
+        const count = {};
+        list.forEach((d) => {
+          count[d.name] = (count[d.name] || 0) + 1;
+        });
+        return list
+          .map((d) => (count[d.name] > 1 ? { ...d, name: `${d.name} · ${unitTypeOf(d)}` } : d))
+          .sort((a, b) => a.name.localeCompare(b.name));
+      })(),
     ],
     [devices, t],
   );
