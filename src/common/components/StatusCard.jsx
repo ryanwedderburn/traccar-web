@@ -908,7 +908,7 @@ const StatusCard = ({
                       icon={<ShowChartIcon />}
                       label="Telemetry"
                       onClick={() =>
-                        window.location.assign(`/telemetry.html?device=${deviceId}#telemetry`)
+                        window.location.assign(`/telemetry.html?device=${deviceId}#unit`)
                       }
                     />
                   )}
