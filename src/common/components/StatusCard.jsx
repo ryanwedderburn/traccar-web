@@ -332,7 +332,10 @@ const relativeAge = (seconds) => {
   if (seconds < 5400) {
     return `${Math.round(seconds / 60)} min ago`;
   }
-  return `${Math.round(seconds / 3600)} h ago`;
+  if (seconds < 172800) {
+    return `${Math.round(seconds / 3600)} h ago`;
+  }
+  return `${Math.round(seconds / 86400)} d ago`;
 };
 
 /**
@@ -370,8 +373,7 @@ const CompetitorRows = ({ competitor, devices }) => {
     return null;
   }
 
-  const { label, state, deviceIds, ages, separationMetres } = competitor;
-  const subjectRef = subjectName(competitor.subjectRef);
+  const { state, deviceIds, ages, separationMetres } = competitor;
   const sources = (deviceIds || [])
     .map((id) => `${devices[id]?.name || `Device ${id}`} (${relativeAge(ages?.[id])})`)
     .join(' · ');
@@ -387,7 +389,6 @@ const CompetitorRows = ({ competitor, devices }) => {
 
   return (
     <>
-      {subjectRef && <StatusRow name="Competitor" content={`${label} · ${subjectRef}`} />}
       {deviceIds?.length > 1 && <StatusRow name="Sources" content={sources} />}
       {agreement && <StatusRow name="Agreement" content={agreement} />}
     </>
@@ -518,6 +519,9 @@ const statusOf = (device, position, theme) => {
   return { colour: theme.palette.warning.main, text: onCourse ? 'Stopped · on course' : 'Stopped' };
 };
 
+/* The competitor's name when the entry list has one (the device may be named "FMC-4130"). */
+const headerName = (device, competitor) => subjectName(competitor?.subjectRef) || device.name;
+
 /* Race number for a competitor, else the bike-brand logo, else the name's first letter. */
 const Avatar = ({ device, competitor, classes, cx }) => {
   const brand = brandKey(device);
@@ -584,6 +588,23 @@ const Tile = ({ classes, cx, label, value, unit, sub, tone }) => (
    position keys they cover, so the detail rows below don't repeat them. */
 const headline = (position, speedUnit, t, classes) => {
   const a = position.attributes || {};
+  /* An FMC impact-trace record (io257) carries the 100 Hz accelerometer burst and nothing else
+     meaningful: no supply voltage, and a satellite field that is not a GNSS count (49 seen on
+     2277, 25 Oct). Say what the record is instead of reading numbers off it. */
+  if (typeof a.io257 === 'string') {
+    return {
+      tiles: [
+        {
+          label: 'Speed',
+          value: Math.round(speedFromKnots(Number(position.speed) || 0, speedUnit)),
+          unit: speedUnitString(speedUnit, t),
+        },
+        { label: 'Last record', value: 'Impact', sub: 'g-force trace' },
+        { label: 'Supply', value: '—', sub: 'not in this record' },
+      ],
+      shown: ['speed', 'sat', 'io257', 'priority', 'event'],
+    };
+  }
   const kind = kindOf(position);
   const tiles = [];
   const shown = ['speed'];
@@ -732,7 +753,7 @@ const StatusCard = ({
               <div className={`draggable-header ${classes.hero}`}>
                 <Avatar device={device} competitor={competitor} classes={classes} cx={cx} />
                 <div className={classes.who}>
-                  <span className={classes.whoName}>{device.name}</span>
+                  <span className={classes.whoName}>{headerName(device, competitor)}</span>
                   <span className={classes.whoSub}>
                     {[
                       device.attributes?.brand,
