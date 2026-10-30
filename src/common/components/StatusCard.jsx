@@ -17,23 +17,25 @@ import {
   CardMedia,
   TableFooter,
   Link,
-  Tooltip,
+  ButtonBase,
 } from '@mui/material';
 import { makeStyles } from 'tss-react/mui';
 import { alpha } from '@mui/material/styles';
 import CloseIcon from '@mui/icons-material/Close';
 import RouteIcon from '@mui/icons-material/Route';
 import SendIcon from '@mui/icons-material/Send';
-import EditIcon from '@mui/icons-material/Edit';
-import DeleteIcon from '@mui/icons-material/Delete';
-import PendingIcon from '@mui/icons-material/Pending';
+import GpsFixedIcon from '@mui/icons-material/GpsFixed';
+import ShowChartIcon from '@mui/icons-material/ShowChart';
+import MoreHorizIcon from '@mui/icons-material/MoreHoriz';
 
 import { useTranslation } from './LocalizationProvider';
 import RemoveDialog from './RemoveDialog';
 import PositionValue from './PositionValue';
 import { useDeviceReadonly, useRestriction } from '../util/permissions';
 import usePositionAttributes from '../attributes/usePositionAttributes';
-import { devicesActions } from '../../store';
+import { devicesActions, followActions } from '../../store';
+import useFollowUi from '../util/useFollowUi';
+import useTools from '../util/useTools';
 import { useCatch, useCatchCallback } from '../../reactHelper';
 import { useAttributePreference } from '../util/preferences';
 import useKiosk from '../util/useKiosk';
@@ -225,12 +227,24 @@ const useStyles = makeStyles()((theme, { desktopPadding }) => ({
     '& span': { color: theme.palette.text.secondary },
   },
   more: { padding: theme.spacing(0.5, 1.75, 1), fontSize: 12 },
-  actionLabel: { display: 'block', fontSize: 10.5, fontWeight: 600, lineHeight: 1, marginTop: 2 },
+  actionLabel: {
+    display: 'block',
+    fontSize: 11,
+    fontWeight: 600,
+    lineHeight: 1,
+    marginTop: 4,
+    whiteSpace: 'nowrap',
+  },
   actionButton: {
+    flex: 1,
     flexDirection: 'column',
     borderRadius: 8,
-    padding: theme.spacing(0.5, 0.75),
-    minWidth: 52,
+    padding: theme.spacing(0.75, 0.5),
+    color: theme.palette.text.secondary,
+    '& svg': { fontSize: 22 },
+    '&:hover': { background: theme.palette.action.hover, color: theme.palette.text.primary },
+    '&.Mui-disabled': { opacity: 0.4 },
+    '&[data-active="true"]': { color: theme.palette.primary.main },
   },
   header: {
     display: 'flex',
@@ -522,10 +536,24 @@ const statusOf = (device, position, theme) => {
 /* The competitor's name when the entry list has one (the device may be named "FMC-4130"). */
 const headerName = (device, competitor) => subjectName(competitor?.subjectRef) || device.name;
 
+/* OURS: a labelled action, as in the approved mock-up (icon over a short word). */
+const ActionButton = ({ classes, icon, label, onClick, disabled, active }) => (
+  <ButtonBase
+    className={classes.actionButton}
+    onClick={onClick}
+    disabled={disabled}
+    data-active={active ? 'true' : undefined}
+    aria-pressed={active === undefined ? undefined : active}
+  >
+    {icon}
+    <span className={classes.actionLabel}>{label}</span>
+  </ButtonBase>
+);
+
 /* Race number for a competitor, else the bike-brand logo, else the name's first letter. */
 const Avatar = ({ device, competitor, classes, cx }) => {
   const brand = brandKey(device);
-  if (competitor?.label) {
+  if (competitor?.label && String(competitor.label).length <= 4) {
     return <div className={cx(classes.avatar, classes.avatarNumber)}>{competitor.label}</div>;
   }
   if (brand) {
@@ -600,7 +628,7 @@ const headline = (position, speedUnit, t, classes) => {
           unit: speedUnitString(speedUnit, t),
         },
         { label: 'Last record', value: 'Impact', sub: 'g-force trace' },
-        { label: 'Supply', value: '—', sub: 'not in this record' },
+        { label: 'Supply', value: '—', sub: 'not recorded' },
       ],
       shown: ['speed', 'sat', 'io257', 'priority', 'event'],
     };
@@ -677,6 +705,9 @@ const StatusCard = ({
 }) => {
   const { classes, cx, theme } = useStyles({ desktopPadding });
   const speedUnit = useAttributePreference('speedUnit');
+  const followUi = useFollowUi();
+  const followed = useSelector((state) => state.follow.deviceId === deviceId);
+  const dashboards = useTools().some((tool) => tool.id === 'dashboards');
   const navigate = useNavigate();
   const dispatch = useDispatch();
   const t = useTranslation();
@@ -860,63 +891,66 @@ const StatusCard = ({
               */}
               {!kiosk && (
                 <CardActions className={classes.actions} disableSpacing>
-                  <Tooltip title={t('sharedExtra')}>
-                    <IconButton
-                      color="secondary"
-                      onClick={(e) => setAnchorEl(e.currentTarget)}
+                  <ActionButton
+                    classes={classes}
+                    icon={<RouteIcon />}
+                    label={t('reportReplay')}
+                    onClick={() => navigate(`/replay?deviceId=${deviceId}`)}
+                    disabled={disableActions || !position}
+                  />
+                  {followUi && (
+                    <ActionButton
+                      classes={classes}
+                      icon={<GpsFixedIcon />}
+                      label={followed ? 'Following' : 'Follow'}
+                      active={followed}
+                      onClick={() => dispatch(followActions.toggle(deviceId))}
                       disabled={!position}
-                    >
-                      <PendingIcon />
-                    </IconButton>
-                  </Tooltip>
-                  <Tooltip title={t('reportReplay')}>
-                    <IconButton
-                      onClick={() => navigate(`/replay?deviceId=${deviceId}`)}
-                      disabled={disableActions || !position}
-                    >
-                      <RouteIcon />
-                    </IconButton>
-                  </Tooltip>
-                  <Tooltip title={t('commandTitle')}>
-                    <IconButton
-                      onClick={() => navigate(`/settings/device/${deviceId}/command`)}
-                      disabled={disableActions}
-                    >
-                      <SendIcon />
-                    </IconButton>
-                  </Tooltip>
-                  <Tooltip title={t('sharedEdit')}>
-                    <IconButton
-                      onClick={() => navigate(`/settings/device/${deviceId}`)}
-                      disabled={disableActions || deviceReadonly}
-                    >
-                      <EditIcon />
-                    </IconButton>
-                  </Tooltip>
-                  <Tooltip title={t('sharedRemove')}>
-                    <IconButton
-                      color="error"
-                      onClick={() => setRemoving(true)}
-                      disabled={disableActions || deviceReadonly}
-                    >
-                      <DeleteIcon />
-                    </IconButton>
-                  </Tooltip>
+                    />
+                  )}
+                  {dashboards && (
+                    <ActionButton
+                      classes={classes}
+                      icon={<ShowChartIcon />}
+                      label="Telemetry"
+                      onClick={() => window.location.assign('/telemetry.html#telemetry')}
+                    />
+                  )}
+                  <ActionButton
+                    classes={classes}
+                    icon={<SendIcon />}
+                    label={t('commandTitle')}
+                    onClick={() => navigate(`/settings/device/${deviceId}/command`)}
+                    disabled={disableActions}
+                  />
+                  <ActionButton
+                    classes={classes}
+                    icon={<MoreHorizIcon />}
+                    label="More"
+                    onClick={(e) => setAnchorEl(e.currentTarget)}
+                  />
                 </CardActions>
               )}
             </Card>
           </Rnd>
         )}
       </div>
-      {position && (
-        <Menu anchorEl={anchorEl} open={Boolean(anchorEl)} onClose={() => setAnchorEl(null)}>
+      {/* OURS: the More menu now also holds Edit and Remove (they were two buttons on the
+          card; the bar keeps the everyday actions). MUI Menu children must be items, not
+          fragments, so each position-only item carries its own condition. */}
+      <Menu anchorEl={anchorEl} open={Boolean(anchorEl)} onClose={() => setAnchorEl(null)}>
+        {position && (
           <MenuItem
             onClick={() => navigate(`/stream?deviceId=${deviceId}`)}
             disabled={position.protocol !== 'jt808'}
           >
             {t('linkLiveVideo')}
           </MenuItem>
-          {!readonly && <MenuItem onClick={handleGeofence}>{t('sharedCreateGeofence')}</MenuItem>}
+        )}
+        {position && !readonly && (
+          <MenuItem onClick={handleGeofence}>{t('sharedCreateGeofence')}</MenuItem>
+        )}
+        {position && (
           <MenuItem
             component="a"
             target="_blank"
@@ -924,6 +958,8 @@ const StatusCard = ({
           >
             {t('linkGoogleMaps')}
           </MenuItem>
+        )}
+        {position && (
           <MenuItem
             component="a"
             target="_blank"
@@ -931,6 +967,8 @@ const StatusCard = ({
           >
             {t('linkAppleMaps')}
           </MenuItem>
+        )}
+        {position && (
           <MenuItem
             component="a"
             target="_blank"
@@ -938,24 +976,39 @@ const StatusCard = ({
           >
             {t('linkStreetView')}
           </MenuItem>
-          {navigationAppTitle && navigationAppLink && (
-            <MenuItem
-              component="a"
-              target="_blank"
-              href={navigationAppLink
-                .replace('{latitude}', position.latitude)
-                .replace('{longitude}', position.longitude)}
-            >
-              {navigationAppTitle}
-            </MenuItem>
-          )}
-          {!shareDisabled && !user.temporary && (
-            <MenuItem onClick={() => navigate(`/settings/device/${deviceId}/share`)}>
-              <Typography color="secondary">{t('sharedShare')}</Typography>
-            </MenuItem>
-          )}
-        </Menu>
-      )}
+        )}
+        {position && navigationAppTitle && navigationAppLink && (
+          <MenuItem
+            component="a"
+            target="_blank"
+            href={navigationAppLink
+              .replace('{latitude}', position.latitude)
+              .replace('{longitude}', position.longitude)}
+          >
+            {navigationAppTitle}
+          </MenuItem>
+        )}
+        {!shareDisabled && !user.temporary && (
+          <MenuItem onClick={() => navigate(`/settings/device/${deviceId}/share`)}>
+            <Typography color="secondary">{t('sharedShare')}</Typography>
+          </MenuItem>
+        )}
+        <MenuItem
+          onClick={() => navigate(`/settings/device/${deviceId}`)}
+          disabled={disableActions || deviceReadonly}
+        >
+          {t('sharedEdit')}
+        </MenuItem>
+        <MenuItem
+          onClick={() => {
+            setAnchorEl(null);
+            setRemoving(true);
+          }}
+          disabled={disableActions || deviceReadonly}
+        >
+          <Typography color="error">{t('sharedRemove')}</Typography>
+        </MenuItem>
+      </Menu>
       <RemoveDialog
         open={removing}
         endpoint="devices"
