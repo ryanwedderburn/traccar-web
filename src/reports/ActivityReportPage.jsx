@@ -73,7 +73,18 @@ const columnsArray = [
 ];
 const columnsMap = new Map(columnsArray);
 
-const TYPES = { competitor: 'Ride', rider: 'Ride', vehicle: 'Drive', person: 'On foot' };
+/* What kind of activity, from the UNIT, not the movement (Ryan, 30 Oct: "'on foot' should not be
+   Ride. Rather 'Personal'. The fmc would be 'Bike'"). A unit on the bike = Bike; a vehicle = Drive;
+   anything carried by the person (handheld, phone) = Personal. A device attribute `activityType`
+   names it outright where the category says otherwise. */
+const BIKE_CATEGORIES = ['motorcycle', 'bicycle', 'scooter'];
+const typeOf = (item, device) => {
+  const named = device?.attributes?.activityType;
+  if (named) return String(named);
+  if (item.role === 'vehicle') return 'Drive';
+  if (BIKE_CATEGORIES.includes(device?.category)) return 'Bike';
+  return 'Personal';
+};
 
 // Trip classification for the travel logbook (REPORTING.md, R9): vehicle trips only, once finished.
 const VEHICLE_CATEGORIES = ['car', 'van', 'truck', 'bus', 'camper', 'tractor'];
@@ -116,7 +127,10 @@ const ActivityReportPage = () => {
   const theme = useTheme();
   const label = (key) => t(key) ?? key;
 
-  const devices = useSelector((state) => state.devices.items, deviceEquality(['id', 'name']));
+  const devices = useSelector(
+    (state) => state.devices.items,
+    deviceEquality(['id', 'name', 'category', 'attributes']),
+  );
 
   const distanceUnit = useAttributePreference('distanceUnit');
   const speedUnit = useAttributePreference('speedUnit');
@@ -334,7 +348,7 @@ const ActivityReportPage = () => {
     const value = item[key];
     switch (key) {
       case 'type':
-        return `${TYPES[item.role] || item.role}${item.open ? ' (in progress)' : ''}`;
+        return `${typeOf(item, devices[item.deviceId])}${item.open ? ' (in progress)' : ''}`;
       case 'startTime':
       case 'endTime':
         return formatTime(value, 'minutes');
