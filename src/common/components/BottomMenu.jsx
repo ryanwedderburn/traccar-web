@@ -468,7 +468,7 @@ const BottomMenu = ({ routeFilter }) => {
           and so this appears again the moment there is no sheet to hold it: a
           kiosk host with no sponsors keeps its Logout button exactly as before.
         */}
-        {!showSponsors && (
+        {!showSponsors && !appScoped && (
           <BottomNavigationAction label={t('settingsUser')} icon={<PersonIcon />} value="account" />
         )}
       </BottomNavigation>
