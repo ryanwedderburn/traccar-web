@@ -159,7 +159,8 @@ export default defineConfig(() => ({
         // code and sets the session. Answered with the app shell, the map opened once and was blank
         // ever after (9 Nov 2026): the first open installs this worker and every later open meets it.
         // ?app-map= is where that link lands, so the app's map is always the deployed version.
-        navigateFallbackDenylist: [/^\/api/, /^\/(?:[\w-]+\/)*[\w-]+\.(html|apk)(\?|$)/, /^\/(?:live|app-login)(\?|$)/, /^\/\?app-map=/],
+        // /join/<code> is a crew invite link, which the edge answers with join.html.
+        navigateFallbackDenylist: [/^\/api/, /^\/(?:[\w-]+\/)*[\w-]+\.(html|apk)(\?|$)/, /^\/(?:live|app-login)(\?|$)/, /^\/\?app-map=/, /^\/join\//],
         globPatterns: ['**/*.{js,css,html,woff,woff2,mp3}'],
       },
       manifest: {
