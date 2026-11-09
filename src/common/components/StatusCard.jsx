@@ -722,6 +722,11 @@ const StatusCard = ({
 
   const deviceImage = device?.attributes?.deviceImage;
 
+  // OURS: from the server. A session opened from the app can't send commands, share or edit,
+  // and someone following a rider sees the live position only, with no history behind it.
+  const appScoped = Boolean(user.attributes?.appScoped);
+  const liveOnly = Boolean(device?.attributes?.liveOnly);
+
   const positionAttributes = usePositionAttributes(t);
   const positionItems = useAttributePreference(
     'positionItems',
@@ -885,13 +890,15 @@ const StatusCard = ({
               */}
               {!kiosk && (
                 <CardActions className={classes.actions} disableSpacing>
-                  <ActionButton
-                    classes={classes}
-                    icon={<RouteIcon />}
-                    label={t('reportReplay')}
-                    onClick={() => navigate(`/replay?deviceId=${deviceId}`)}
-                    disabled={disableActions || !position}
-                  />
+                  {!liveOnly && (
+                    <ActionButton
+                      classes={classes}
+                      icon={<RouteIcon />}
+                      label={t('reportReplay')}
+                      onClick={() => navigate(`/replay?deviceId=${deviceId}`)}
+                      disabled={disableActions || !position}
+                    />
+                  )}
                   {followUi && (
                     <ActionButton
                       classes={classes}
@@ -902,7 +909,7 @@ const StatusCard = ({
                       disabled={!position}
                     />
                   )}
-                  {dashboards && (
+                  {dashboards && !liveOnly && (
                     <ActionButton
                       classes={classes}
                       icon={<ShowChartIcon />}
@@ -912,13 +919,15 @@ const StatusCard = ({
                       }
                     />
                   )}
-                  <ActionButton
-                    classes={classes}
-                    icon={<SendIcon />}
-                    label={t('commandTitle')}
-                    onClick={() => navigate(`/settings/device/${deviceId}/command`)}
-                    disabled={disableActions}
-                  />
+                  {!appScoped && (
+                    <ActionButton
+                      classes={classes}
+                      icon={<SendIcon />}
+                      label={t('commandTitle')}
+                      onClick={() => navigate(`/settings/device/${deviceId}/command`)}
+                      disabled={disableActions}
+                    />
+                  )}
                   <ActionButton
                     classes={classes}
                     icon={<MoreHorizIcon />}
@@ -984,26 +993,30 @@ const StatusCard = ({
             {navigationAppTitle}
           </MenuItem>
         )}
-        {!shareDisabled && !user.temporary && (
+        {!shareDisabled && !user.temporary && !appScoped && (
           <MenuItem onClick={() => navigate(`/settings/device/${deviceId}/share`)}>
             <Typography color="secondary">{t('sharedShare')}</Typography>
           </MenuItem>
         )}
-        <MenuItem
-          onClick={() => navigate(`/settings/device/${deviceId}`)}
-          disabled={disableActions || deviceReadonly}
-        >
-          {t('sharedEdit')}
-        </MenuItem>
-        <MenuItem
-          onClick={() => {
-            setAnchorEl(null);
-            setRemoving(true);
-          }}
-          disabled={disableActions || deviceReadonly}
-        >
-          <Typography color="error">{t('sharedRemove')}</Typography>
-        </MenuItem>
+        {!appScoped && (
+          <MenuItem
+            onClick={() => navigate(`/settings/device/${deviceId}`)}
+            disabled={disableActions || deviceReadonly}
+          >
+            {t('sharedEdit')}
+          </MenuItem>
+        )}
+        {!appScoped && (
+          <MenuItem
+            onClick={() => {
+              setAnchorEl(null);
+              setRemoving(true);
+            }}
+            disabled={disableActions || deviceReadonly}
+          >
+            <Typography color="error">{t('sharedRemove')}</Typography>
+          </MenuItem>
+        )}
       </Menu>
       <RemoveDialog
         open={removing}
