@@ -1,3 +1,4 @@
+import { useEffect, useState } from 'react';
 import { useDispatch, useSelector } from 'react-redux';
 import { makeStyles } from 'tss-react/mui';
 import {
@@ -115,6 +116,16 @@ const DeviceRow = ({ devices, competitors, index, style }) => {
   const item = devices[index];
   const position = useSelector((state) => state.session.positions[item.id]);
 
+  // OURS: someone following a rider. A phone pauses GPS when it stands still, so "Offline" would be
+  // wrong. They get the age of the last position instead, kept current because nothing else redraws it.
+  const liveOnly = Boolean(item.attributes?.liveOnly);
+  const [, setMinute] = useState(0);
+  useEffect(() => {
+    if (!liveOnly) return undefined;
+    const timer = setInterval(() => setMinute((minute) => minute + 1), 60 * 1000);
+    return () => clearInterval(timer);
+  }, [liveOnly]);
+
   const devicePrimary = useAttributePreference('devicePrimary', 'name');
   const deviceSecondary = useAttributePreference('deviceSecondary', '');
 
@@ -165,7 +176,10 @@ const DeviceRow = ({ devices, competitors, index, style }) => {
     // Kiosk-only, and only once the device has ever reported: a device that
     // has never reported is a setup problem, not a geography one.
     let colorKey = getStatusColor(item.status);
-    if (kiosk && !position && item.lastUpdate) {
+    if (liveOnly && position) {
+      status = dayjs(position.fixTime).fromNow();
+      colorKey = 'neutral';
+    } else if (kiosk && !position && item.lastUpdate) {
       // The COLOUR still answers "is this thing reporting?" - green for a rider
       // whose phone is live right now - and the WORDS answer "why is there no
       // marker?". Ryan, 2026-09-22: "should be green if the user is in fact
