@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useReducer } from 'react';
 import { useDispatch, useSelector } from 'react-redux';
 import { makeStyles } from 'tss-react/mui';
 import {
@@ -119,10 +119,10 @@ const DeviceRow = ({ devices, competitors, index, style }) => {
   // OURS: someone following a rider. A phone pauses GPS when it stands still, so "Offline" would be
   // wrong. They get the age of the last position instead, kept current because nothing else redraws it.
   const liveOnly = Boolean(item.attributes?.liveOnly);
-  const [, setMinute] = useState(0);
+  const [, redraw] = useReducer((minute) => minute + 1, 0);
   useEffect(() => {
     if (!liveOnly) return undefined;
-    const timer = setInterval(() => setMinute((minute) => minute + 1), 60 * 1000);
+    const timer = setInterval(redraw, 60 * 1000);
     return () => clearInterval(timer);
   }, [liveOnly]);
 
