@@ -155,7 +155,10 @@ export default defineConfig(() => ({
         // `(?:[\w-]+\/)*` makes the directory part optional and repeatable, so
         // top-level and nested both match. Still cannot shadow a React route:
         // no route ends in .html or .apk.
-        navigateFallbackDenylist: [/^\/api/, /^\/(?:[\w-]+\/)*[\w-]+\.(html|apk)(\?|$)/, /^\/live(\?|$)/],
+        // /app-login is the app's sign-in link for the map. It has to reach the server, which spends the
+        // code and sets the session. Answered with the app shell, the map opened once and was blank
+        // ever after (9 Nov 2026): the first open installs this worker and every later open meets it.
+        navigateFallbackDenylist: [/^\/api/, /^\/(?:[\w-]+\/)*[\w-]+\.(html|apk)(\?|$)/, /^\/(?:live|app-login)(\?|$)/],
         globPatterns: ['**/*.{js,css,html,woff,woff2,mp3}'],
       },
       manifest: {
