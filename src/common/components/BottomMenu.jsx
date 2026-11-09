@@ -46,6 +46,8 @@ const BottomMenu = ({ routeFilter }) => {
 
   const readonly = useRestriction('readonly');
   const disableReports = useRestriction('disableReports');
+  // OURS: a session opened from the app is a map viewer, so it gets no fleet overview.
+  const appScoped = useSelector((state) => Boolean(state.session.user.attributes?.appScoped));
 
   /*
    * The admin tools are one link away, and were not reachable from here at all.
@@ -351,7 +353,7 @@ const BottomMenu = ({ routeFilter }) => {
           the SupportWidget rationale: per-vertical chrome, no l10n key that
           would render empty in every other locale.
         */}
-        {equipmentUi && (
+        {equipmentUi && !appScoped && (
           <BottomNavigationAction label="Fleet" icon={<SpaceDashboardIcon />} value="dashboard" />
         )}
         {/*
